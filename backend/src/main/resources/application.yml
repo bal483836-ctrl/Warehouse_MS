@@ -1,0 +1,29 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: warehouse-ms
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/ahut_base?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
+    username: wms
+    password: wms123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+    show-sql: false
+  web:
+    resources:
+      static-locations: classpath:/static/
+
+logging:
+  level:
+    root: INFO
+    com.wms: INFO

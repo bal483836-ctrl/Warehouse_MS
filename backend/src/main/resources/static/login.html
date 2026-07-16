@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>登录 · 库智 WMS</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh;display:grid;place-items:center;
+    background:radial-gradient(120% 80% at 80% -10%,#16346f,transparent 55%),linear-gradient(135deg,#0a0e17,#0e1523 55%,#0a1120);color:#eaf1ff;overflow:hidden}
+  .bg{position:fixed;inset:0;opacity:.16;background-image:
+    linear-gradient(#4c86e1 1px,transparent 1px),linear-gradient(90deg,#4c86e1 1px,transparent 1px);
+    background-size:46px 46px;mask-image:radial-gradient(80% 60% at 30% 40%,#000,transparent 75%)}
+  .card{position:relative;width:min(400px,92vw);background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);
+    border-radius:20px;padding:38px 34px;backdrop-filter:blur(14px);box-shadow:0 30px 80px rgba(0,0,0,.5)}
+  .logo{width:52px;height:52px;border-radius:15px;background:linear-gradient(145deg,#3d8bef,#1b57b0);display:grid;place-items:center;
+    box-shadow:0 10px 26px rgba(28,92,171,.6);margin-bottom:18px}
+  .logo svg{width:28px;height:28px}
+  h1{font-size:23px;margin:0 0 4px;letter-spacing:.5px}
+  .sub{color:#8fa0bd;font-size:13px;margin-bottom:26px}
+  label{display:block;font-size:12.5px;color:#aab7cf;margin:16px 0 7px;font-weight:600}
+  .inp{display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+    border-radius:11px;padding:11px 13px;transition:border-color .15s}
+  .inp:focus-within{border-color:#4c86e1;box-shadow:0 0 0 3px rgba(76,134,225,.18)}
+  .inp svg{width:16px;height:16px;color:#7e8ea8;flex:0 0 auto}
+  .inp input{flex:1;background:none;border:none;outline:none;color:#fff;font-size:14px}
+  .inp input::placeholder{color:#6f7d95}
+  button{width:100%;margin-top:26px;padding:12px;border:none;border-radius:11px;background:linear-gradient(180deg,#3d8bef,#2a6fd0);
+    color:#fff;font-size:14.5px;font-weight:600;box-shadow:0 10px 24px rgba(42,111,208,.4);transition:transform .12s,box-shadow .12s}
+  button:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(42,111,208,.5)}
+  button:disabled{opacity:.6;cursor:default;transform:none}
+  .err{color:#ff9b9b;font-size:12.5px;margin-top:14px;min-height:16px;text-align:center}
+  .hint{margin-top:18px;text-align:center;font-size:12px;color:#6f7d95;line-height:1.7}
+  .hint code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:5px;color:#bcd0f0}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<form class="card" id="form">
+  <div class="logo"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2 3 6.5v11L12 22l9-4.5v-11L12 2Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/><path d="M3 6.5 12 11l9-4.5M12 11v11" stroke="#fff" stroke-width="1.7" stroke-linejoin="round" opacity=".7"/></svg></div>
+  <h1>欢迎登录</h1>
+  <div class="sub">库智 WMS · 智能仓储管理平台</div>
+
+  <label>登录账号</label>
+  <div class="inp"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M4 21a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <input id="number" placeholder="请输入账号" autocomplete="username" value="admin"></div>
+
+  <label>登录密码</label>
+  <div class="inp"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.8"/></svg>
+    <input id="password" type="password" placeholder="请输入密码" autocomplete="current-password"></div>
+
+  <button type="submit" id="btn">登 录</button>
+  <div class="err" id="err"></div>
+  <div class="hint">演示账号：<code>admin / admin123</code> · <code>test / 123456</code></div>
+</form>
+<script>
+  const $=s=>document.querySelector(s);
+  if(localStorage.getItem('wms_token')) location.href='index.html';
+  $('#form').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const btn=$('#btn'), err=$('#err'); err.textContent=''; btn.disabled=true; btn.textContent='登录中…';
+    try{
+      const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({number:$('#number').value.trim(),password:$('#password').value})});
+      const j=await r.json();
+      if(j.code===200){
+        localStorage.setItem('wms_token',j.data.token);
+        localStorage.setItem('wms_user',JSON.stringify(j.data.user));
+        location.href='index.html';
+      }else{ err.textContent=j.msg||'登录失败'; }
+    }catch(ex){ err.textContent='网络错误，请重试'; }
+    btn.disabled=false; btn.textContent='登 录';
+  });
+</script>
+</body>
+</html>
