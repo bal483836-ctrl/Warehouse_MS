@@ -23,4 +23,10 @@ public class Record {
     private String remark;
     @Column(name = "type")
     private Integer type;
+    /** 关联订单id（采购/销售订单），打通 供应商→入库→订单→客户→出库 链路 */
+    @Column(name = "order_id")
+    private Integer orderId;
+    /** 入库单据/收货凭证图片（data URL 或相对路径），仅入库可选填 */
+    @Column(name = "image")
+    private String image;
 }

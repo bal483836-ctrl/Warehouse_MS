@@ -28,7 +28,7 @@
   /* ---------- 配置：导航 + 表 ---------- */
   const TABLES = {
     record:          { label: '出入库记录', cols: ['id', 'goods', 'user_id', 'count', 'type', 'createtime', 'remark'], readonly: true },
-    goods:           { label: '商品档案' },
+    goods:           { label: '商品档案', hide: ['image'] },
     goodstype:       { label: '商品分类' },
     storage:         { label: '仓库管理' },
     location:        { label: '货位管理' },
@@ -36,13 +36,8 @@
     customer:        { label: '客户管理' },
     goods_batch:     { label: '批次/保质期' },
     stock_alert:     { label: '库存预警' },
-    stock_check:     { label: '库存盘点' },
-    stock_check_item:{ label: '盘点明细' },
     sys_user:        { label: '用户管理', hide: ['password', 'salt'] },
     sys_role:        { label: '角色管理' },
-    sys_menu:        { label: '菜单管理' },
-    sys_user_role:   { label: '用户角色' },
-    sys_role_res:    { label: '角色资源' },
     sys_notice:      { label: '系统公告' },
     sys_log:         { label: '操作日志', cols: ['id', 'content', 'ip_addr', 'user_id', 'create_time', 'duration'], readonly: true }
   };
@@ -55,6 +50,9 @@
       ['t/record', '出入库记录', 'M4 5h16v14H4zM4 9h16'],
       ['t/goods', '商品档案', 'M20 7 12 3 4 7v10l8 4 8-4V7Z'],
       ['t/goodstype', '商品分类', 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'] ] },
+    { group: '订单链路', items: [
+      ['orders/0', '采购订单', 'M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4ZM3 6h18M16 10a4 4 0 0 1-8 0'],
+      ['orders/1', '销售订单', 'M9 2h6l1 4H8ZM4 6h16l-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2ZM9 11v6m6-6v6'] ] },
     { group: '仓储', items: [
       ['t/storage', '仓库管理', 'M4 21V8l8-5 8 5v13'],
       ['t/location', '货位管理', 'M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11Z'],
@@ -66,27 +64,33 @@
     { group: '系统', items: [
       ['t/sys_user', '用户管理', 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21a8 8 0 0 1 16 0'],
       ['t/sys_role', '角色管理', 'M12 2 4 5v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V5l-8-3Z'],
+      ['t/sys_notice', '系统公告', 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0'],
       ['t/sys_log', '操作日志', 'M4 4h16v16H4zM8 9h8M8 13h5'] ] }
   ];
-  const LABELS = { id:'ID', name:'名称', remark:'备注', count:'数量', storage:'仓库', goodsType:'分类', goods:'货品',
+  const LABELS = { id:'ID', name:'名称', remark:'备注', count:'数量', storage:'仓库', goodsType:'分类', goods:'货品', zone:'分区', image:'图片',
     user_id:'操作人', createtime:'时间', create_time:'创建时间', update_time:'更新时间', create_by:'创建人', update_by:'更新人',
-    del_flag:'删除', type:'类型', contact:'联系人', phone:'电话', email:'邮箱', address:'地址', supplier_id:'供应商',
+    del_flag:'删除', type:'类型', contact:'联系人', phone:'电话', email:'邮箱', address:'地址', supplier_id:'供应商', customer_id:'客户',
     batch_no:'批次号', production_date:'生产日期', expiry_date:'到期日', min_count:'最低库存', max_count:'最高库存',
-    enabled:'启用', goods_id:'货品', code:'库位编码', zone:'库区', row_no:'排', col_no:'列', capacity:'容量',
-    check_no:'盘点单号', storage_id:'仓库', status:'状态', check_time:'盘点时间', system_count:'系统库存',
-    actual_count:'实盘', diff_count:'差异', check_id:'盘点单', title:'标题', content:'内容', number:'账号',
+    enabled:'启用', goods_id:'货品', code:'库位编码', row_no:'排', col_no:'列', capacity:'容量',
+    order_no:'订单号', order_time:'下单时间', total_amount:'金额', price:'单价', order_id:'订单',
+    status:'状态', storage_id:'仓库', title:'标题', content:'内容', number:'账号',
     age:'年龄', sex:'性别', locked:'锁定', loginsign:'登录标识', parent_id:'上级', icon:'图标', url:'地址',
     sort:'排序', description:'说明', component:'组件', role_id:'角色', res_id:'资源', res_type:'资源类型',
     ip_addr:'IP地址', data:'参数', methods:'方法', result:'结果', duration:'耗时(ms)', is_hidden_menu:'隐藏', is_option_menu:'下拉' };
+  const ZONES = ['冷冻', '冰鲜', '普通'];
   const lab = k => LABELS[k] || k;
 
   /* 关联字典（列表展示 id -> 名称） */
   const refs = {};
   async function loadRefs() {
-    const [st, gt, gs, us] = await Promise.all([get('/api/storage'), get('/api/goodstype'), get('/api/goods'), get('/api/sys_user')]);
+    const [st, gt, gs, us, sp, cu] = await Promise.all([
+      get('/api/storage'), get('/api/goodstype'), get('/api/goods'), get('/api/sys_user'),
+      get('/api/supplier'), get('/api/customer')]);
     refs.storage = map(st.data, 'id', 'name'); refs.goodstype = map(gt.data, 'id', 'name');
     refs.goods = map(gs.data, 'id', 'name'); refs.user = map(us.data, 'id', 'name');
+    refs.supplier = map(sp.data, 'id', 'name'); refs.customer = map(cu.data, 'id', 'name');
     refs.goodsList = gs.data || []; refs.storageList = st.data || []; refs.typeList = gt.data || [];
+    refs.supplierList = sp.data || []; refs.customerList = cu.data || [];
   }
   const map = (arr, k, v) => (arr || []).reduce((o, x) => (o[x[k]] = x[v], o), {});
 
@@ -115,6 +119,7 @@
       if (hash === 'dashboard') { setActive('dashboard'); await renderDashboard(view); }
       else if (hash === 'alerts') { setActive('alerts'); await renderAlerts(view); }
       else if (hash === 'inout') { setActive('inout'); await renderInout(view); }
+      else if (hash.startsWith('orders/')) { const ty = +hash.slice(7); setActive('orders/' + ty); await renderOrders(view, ty); }
       else if (hash.startsWith('t/')) { const t = hash.slice(2); setActive(hash); await renderTable(view, t); }
       else { view.innerHTML = '<div class="card">页面不存在</div>'; }
     } catch (e) { if (e.message !== '401') view.innerHTML = `<div class="card">加载失败：${e.message}</div>`; }
@@ -173,8 +178,8 @@
       </section>
       <section class="card">
         <div class="hm-head">
-          <div><div class="card-h"><h3>仓库库位热力图</h3></div><div class="desc" style="margin-top:2px">占用率与预警由真实库存数据算出 · 颜色越深库存越满，红色为预警库位</div></div>
-          <div class="hm-legend"><select id="hmStore" style="width:auto"></select><div class="hm-scale"><span>空</span><div class="hm-bar"></div><span>满</span></div><div class="hm-flag"><div class="box"></div>预警</div></div>
+          <div><div class="card-h"><h3>仓库库位热力图</h3></div><div class="desc" style="margin-top:2px">按 冷冻 / 冰鲜 / 普通 分区展示 · 绿色越深库存越满；<b style="color:var(--crit)">红色代表库存偏低，越少越红需及时补货</b></div></div>
+          <div class="hm-legend"><select id="hmStore" style="width:auto"></select><div class="hm-scale"><span>空</span><div class="hm-bar"></div><span>满</span></div><div class="hm-flag"><div class="box"></div>库存偏低</div></div>
         </div>
         <div class="zones" id="zones"></div>
       </section>
@@ -246,23 +251,30 @@
     $('#donut').innerHTML = `<svg viewBox="0 0 160 160" width="160" height="160">${seg}<text x="80" y="74" text-anchor="middle" style="fill:var(--muted)" font-size="11">总库存</text><text x="80" y="95" text-anchor="middle" style="fill:var(--ink)" font-size="22" font-weight="700">${fmt(tot)}</text></svg>`;
     $('#donutLegend').innerHTML = cats.map(c => `<div class="row"><span class="sw" style="background:${c.c}"></span><span class="nm">${c.nm}</span><span class="vv tnum">${fmt(c.v)}</span><span class="pc tnum">${(c.v / tot * 100).toFixed(0)}%</span></div>`).join('');
   }
-  const ramp = ['#e9f1fd', '#cde2fb', '#9ec5f4', '#6da7ec', '#3987e5', '#256abf', '#184f95', '#0d366b'];
+  // 绿色占用梯度（越满越深）
+  const ramp = ['#e8f5ec', '#cdeacf', '#a8dcae', '#7fca8b', '#54b56b', '#2f9d54', '#1f8043', '#136432'];
   const rampColor = p => p <= 0 ? ramp[0] : ramp[Math.min(ramp.length - 1, 1 + Math.floor(p / 100 * (ramp.length - 1)))];
+  // 红色预警梯度（越少越红，severity 0~100）
+  const redRamp = ['#fecdd3', '#fca5a5', '#f87171', '#ef4444', '#dc2626', '#b91c1c'];
+  const redColor = s => redRamp[Math.min(redRamp.length - 1, Math.floor(s / 100 * redRamp.length))];
+  const ZONE_ICON = { 冷冻: '❄', 冰鲜: '🐟', 普通: '📦' };
   async function loadHeatmap(storageId) {
     const res = await get('/api/heatmap?storageId=' + storageId);
     const bins = res.data.bins || [];
     const zones = {};
     bins.forEach(b => { (zones[b.zone] = zones[b.zone] || []).push(b); });
-    $('#zones').innerHTML = Object.keys(zones).sort().map(z => {
+    const order = z => { const i = ZONES.indexOf(z); return i < 0 ? 99 : i; };
+    $('#zones').innerHTML = Object.keys(zones).sort((a, b) => order(a) - order(b)).map(z => {
       const cells = zones[z].map(b => {
-        const cls = b.alert ? 'crit' : (b.stock <= 0 ? 'empty' : (b.occupancy > 50 ? 'hi' : ''));
-        const bg = b.alert ? '' : `background:${rampColor(b.occupancy)}`;
-        return `<div class="bin ${cls}" style="${bg}" data-code="${b.code}" data-g="${b.goods}" data-o="${b.occupancy}" data-a="${b.alert ? (b.reason || '预警') : ''}">${b.rowNo}</div>`;
+        const low = b.alert;
+        const cls = low ? 'low' : (b.stock <= 0 ? 'empty' : (b.occupancy > 55 ? 'hi' : ''));
+        const bg = low ? redColor(b.severity || 60) : rampColor(b.occupancy);
+        return `<div class="bin ${cls}" style="background:${bg}" data-code="${b.code}" data-g="${b.goods}" data-o="${b.occupancy}" data-s="${b.stock}" data-a="${low ? (b.reason || '库存偏低') : ''}">${b.rowNo}</div>`;
       }).join('');
-      return `<div class="zone"><div class="zt">${z} 区<span>${zones[z].length} 库位</span></div><div class="bins">${cells}</div></div>`;
+      return `<div class="zone"><div class="zt">${ZONE_ICON[z] || ''} ${z || '未分区'}<span>${zones[z].length} 库位</span></div><div class="bins">${cells}</div></div>`;
     }).join('');
     $('#zones').querySelectorAll('.bin').forEach(b => {
-      b.addEventListener('mousemove', e => showTip(`<b>库位 ${b.dataset.code}</b><div class="r"><span>货物</span><span class="v">${b.dataset.g}</span></div><div class="r"><span>占用</span><span class="v">${b.dataset.o}%</span></div>${b.dataset.a ? `<div class="r" style="color:#ff9b9b">⚠ ${b.dataset.a}</div>` : ''}`, e.clientX, e.clientY));
+      b.addEventListener('mousemove', e => showTip(`<b>库位 ${b.dataset.code}</b><div class="r"><span>货物</span><span class="v">${b.dataset.g}</span></div><div class="r"><span>存量</span><span class="v">${b.dataset.s}</span></div><div class="r"><span>占用</span><span class="v">${b.dataset.o}%</span></div>${b.dataset.a ? `<div class="r" style="color:#ff9b9b">⚠ ${b.dataset.a}</div>` : ''}`, e.clientX, e.clientY));
       b.addEventListener('mouseleave', hideTip);
     });
   }
@@ -271,6 +283,12 @@
   async function renderInout(view) {
     $('#pageTitle').textContent = '出入库操作';
     $('#pageSub').textContent = '选择货物执行入库 / 出库，实时更新库存与库位';
+    const ordRes = await get('/api/orders');
+    const orders = ordRes.data || [];
+    const orderOpt = orders.map(o => {
+      const who = o.type === 1 ? (refs.customer[o.customerId] || '客户') : (refs.supplier[o.supplierId] || '供应商');
+      return `<option value="${o.id}" data-type="${o.type}">${o.type === 1 ? '销' : '采'}｜${o.orderNo}（${who}）</option>`;
+    }).join('');
     view.innerHTML = `
       <section class="grid-2">
         <div class="card">
@@ -278,6 +296,8 @@
           <div style="display:flex;flex-direction:column;gap:14px;margin-top:12px">
             <div class="field"><label>选择货物</label><select id="ioGoods"></select></div>
             <div class="field"><label>数量</label><input id="ioCount" type="number" min="1" value="10"></div>
+            <div class="field"><label>关联订单（可选）</label><select id="ioOrder"><option value="">— 不关联订单 —</option>${orderOpt}</select></div>
+            <div class="field"><label>收货凭证图片（入库可选）</label><input id="ioImg" type="file" accept="image/*"><div id="ioImgPrev"></div></div>
             <div class="field"><label>备注</label><input id="ioRemark" placeholder="选填"></div>
             <div style="display:flex;gap:12px;margin-top:4px">
               <button class="btn btn-primary" id="btnIn" style="flex:1">入库</button>
@@ -287,27 +307,150 @@
         </div>
         <div class="card">
           <div class="card-h"><h3>当前库存</h3></div>
-          <div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>货物</th><th>仓库</th><th>库存</th></tr></thead><tbody id="ioStock"></tbody></table></div>
+          <div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>货物</th><th>分区</th><th>仓库</th><th>库存</th></tr></thead><tbody id="ioStock"></tbody></table></div>
         </div>
       </section>
       <section class="card">
         <div class="card-h"><h3>最新流水</h3></div>
-        <div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>货物</th><th>类型</th><th>数量</th><th>操作人</th><th>时间</th><th>备注</th></tr></thead><tbody id="ioRec"></tbody></table></div>
+        <div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>货物</th><th>类型</th><th>数量</th><th>关联订单</th><th>操作人</th><th>时间</th><th>备注</th></tr></thead><tbody id="ioRec"></tbody></table></div>
       </section>`;
-    $('#ioGoods').innerHTML = refs.goodsList.map(g => `<option value="${g.id}">${g.name}（${refs.storage[g.storage] || ''}）</option>`).join('');
-    const refreshStock = () => { $('#ioStock').innerHTML = refs.goodsList.map(g => `<tr><td>${g.name}</td><td class="muted">${refs.storage[g.storage] || '-'}</td><td class="qty tnum">${g.count}</td></tr>`).join(''); };
+    $('#ioGoods').innerHTML = refs.goodsList.map(g => `<option value="${g.id}">${g.name}（${zoneTag(g.zone)}·${refs.storage[g.storage] || ''}）</option>`).join('');
+    const ordNo = {}; orders.forEach(o => ordNo[o.id] = o.orderNo);
+    let imgData = '';
+    $('#ioImg').onchange = e => { const f = e.target.files[0]; if (!f) { imgData = ''; $('#ioImgPrev').innerHTML = ''; return; }
+      const rd = new FileReader(); rd.onload = () => { imgData = rd.result; $('#ioImgPrev').innerHTML = `<img src="${imgData}" style="margin-top:8px;max-height:88px;border-radius:8px;border:1px solid var(--border)">`; }; rd.readAsDataURL(f); };
+    const refreshStock = () => { $('#ioStock').innerHTML = refs.goodsList.map(g => `<tr><td>${g.name}</td><td>${zoneTag(g.zone)}</td><td class="muted">${refs.storage[g.storage] || '-'}</td><td class="qty tnum">${g.count}</td></tr>`).join(''); };
     const refreshRec = async () => { const rec = await get('/api/record'); const rows = (rec.data || []).sort((a, b) => b.id - a.id).slice(0, 10);
       $('#ioRec').innerHTML = rows.map(r => { const g = refs.goodsList.find(x => x.id === r.goods) || {}; const inb = r.type === 0;
-        return `<tr><td>${g.name || '#' + r.goods}</td><td><span class="pill ${inb ? 'in' : 'out'}"><span class="d"></span>${inb ? '入库' : '出库'}</span></td><td class="qty ${inb ? 'pos' : 'neg'} tnum">${inb ? '+' : '-'}${r.count}</td><td class="muted">${refs.user[r.user_id] || '-'}</td><td class="muted tnum">${r.createtime || ''}</td><td class="muted">${r.remark || ''}</td></tr>`; }).join(''); };
+        return `<tr><td>${g.name || '#' + r.goods}</td><td><span class="pill ${inb ? 'in' : 'out'}"><span class="d"></span>${inb ? '入库' : '出库'}</span></td><td class="qty ${inb ? 'pos' : 'neg'} tnum">${inb ? '+' : '-'}${r.count}</td><td class="muted">${r.orderId ? (ordNo[r.orderId] || ('#' + r.orderId)) : '-'}</td><td class="muted">${refs.user[r.user_id] || '-'}</td><td class="muted tnum">${r.createtime || ''}</td><td class="muted">${r.remark || ''}</td></tr>`; }).join(''); };
     refreshStock(); await refreshRec();
     const move = async (dir) => {
       const goodsId = +$('#ioGoods').value, count = +$('#ioCount').value, remark = $('#ioRemark').value;
+      const orderId = $('#ioOrder').value ? +$('#ioOrder').value : null;
       if (!count || count <= 0) return showToast('请输入正数数量', true);
-      const res = await post('/api/inout/' + dir, { goodsId, count, remark });
-      if (res.code === 200) { showToast((dir === 'in' ? '入库' : '出库') + '成功'); await loadRefs(); refreshStock(); await refreshRec(); }
+      const body = { goodsId, count, remark, orderId };
+      if (dir === 'in' && imgData) body.image = imgData;
+      const res = await post('/api/inout/' + dir, body);
+      if (res.code === 200) { showToast((dir === 'in' ? '入库' : '出库') + '成功'); imgData = ''; $('#ioImg').value = ''; $('#ioImgPrev').innerHTML = ''; await loadRefs(); refreshStock(); await refreshRec(); }
       else showToast(res.msg || '操作失败', true);
     };
     $('#btnIn').onclick = () => move('in'); $('#btnOut').onclick = () => move('out');
+  }
+  /* 分区标签（冷冻/冰鲜/普通） */
+  function zoneTag(z) {
+    z = z || '普通';
+    const c = { 冷冻: '#2a78d6', 冰鲜: '#1baf7a', 普通: '#8a99b5' }[z] || '#8a99b5';
+    return `<span class="pill" style="color:${c};background:color-mix(in srgb,${c} 14%,transparent)"><span class="d"></span>${z}</span>`;
+  }
+
+  /* ================= 订单链路（采购 / 销售） ================= */
+  const ORDER_STATUS = ['待处理', '已完成', '已取消'];
+  const statusPill = s => { const c = ['#e0920a', '#0ca30c', '#8a99b5'][s] || '#8a99b5'; return `<span class="pill" style="color:${c};background:color-mix(in srgb,${c} 14%,transparent)"><span class="d"></span>${ORDER_STATUS[s] || '—'}</span>`; };
+  const money = n => '¥' + (Number(n || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  async function renderOrders(view, type) {
+    const isSale = type === 1;
+    $('#pageTitle').textContent = isSale ? '销售订单' : '采购订单';
+    $('#pageSub').textContent = isSale ? '面向门店/客户的销售出库订单，关联客户与出库流水' : '面向供应商的采购入库订单，关联供应商与入库流水';
+    const res = await get('/api/orders?type=' + type);
+    let rows = res.data || [];
+    view.innerHTML = `<section class="card">
+      <div class="toolbar">
+        <input class="search" id="q" placeholder="搜索订单号…">
+        <button class="btn btn-primary btn-sm" id="add"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>新建${isSale ? '销售' : '采购'}订单</button>
+        <span class="muted" id="cnt" style="margin-left:auto"></span>
+      </div>
+      <div class="tablewrap"><table><thead><tr>
+        <th>订单号</th><th>${isSale ? '客户' : '供应商'}</th><th>商品项</th><th>总数量</th><th>金额</th><th>状态</th><th>下单时间</th><th>操作</th>
+      </tr></thead><tbody id="tb"></tbody></table></div>
+    </section>`;
+    const render = (list) => {
+      $('#cnt').textContent = `共 ${list.length} 单`;
+      $('#tb').innerHTML = list.map(o => {
+        const who = isSale ? (refs.customer[o.customerId] || '-') : (refs.supplier[o.supplierId] || '-');
+        return `<tr>
+          <td><b>${esc(o.orderNo)}</b></td><td>${esc(who)}</td>
+          <td class="tnum">${o.itemCount} 项</td><td class="qty tnum">${o.totalQty}</td>
+          <td class="tnum">${money(o.totalAmount)}</td><td>${statusPill(o.status)}</td>
+          <td class="muted tnum">${(o.orderTime || '').replace('T', ' ').slice(0, 16)}</td>
+          <td><div class="rowbtns"><button class="btn btn-sm" data-view="${o.id}">查看</button><button class="btn btn-sm" data-edit="${o.id}">编辑</button><button class="btn btn-sm btn-danger" data-del="${o.id}">删除</button></div></td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="8" class="muted">暂无订单</td></tr>`;
+      $('#tb').querySelectorAll('[data-view]').forEach(b => b.onclick = () => openOrderDetail(b.dataset.view, isSale));
+      $('#tb').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openOrderForm(type, rows.find(r => r.id == b.dataset.edit)));
+      $('#tb').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (!confirm('确认删除该订单？')) return; const r = await del('/api/orders/' + b.dataset.del); if (r.code === 200) { showToast('已删除'); route(); } else showToast(r.msg || '删除失败', true); });
+    };
+    render(rows);
+    $('#q').oninput = e => { const q = e.target.value.toLowerCase(); render(!q ? rows : rows.filter(o => (o.orderNo || '').toLowerCase().includes(q))); };
+    $('#add').onclick = () => openOrderForm(type, null);
+  }
+
+  async function openOrderDetail(id, isSale) {
+    const res = await get('/api/orders/' + id);
+    if (res.code !== 200) return showToast(res.msg || '加载失败', true);
+    const o = res.data, items = o.items || [];
+    const who = o.type === 1 ? (refs.customer[o.customerId] || '-') : (refs.supplier[o.supplierId] || '-');
+    const bg = document.createElement('div'); bg.className = 'modal-bg';
+    bg.innerHTML = `<div class="modal"><h3>${o.type === 1 ? '销售' : '采购'}订单 · ${esc(o.orderNo)}</h3>
+      <div class="detail-meta">
+        <div><span>${o.type === 1 ? '客户' : '供应商'}</span><b>${esc(who)}</b></div>
+        <div><span>状态</span>${statusPill(o.status)}</div>
+        <div><span>金额</span><b>${money(o.totalAmount)}</b></div>
+        <div><span>下单时间</span><b>${(o.orderTime || '').replace('T', ' ').slice(0, 16)}</b></div>
+      </div>
+      <div class="tablewrap" style="margin-top:14px"><table><thead><tr><th>商品</th><th>分区</th><th>数量</th><th>单价</th><th>小计</th></tr></thead>
+        <tbody>${items.map(it => { const g = refs.goodsList.find(x => x.id === it.goodsId) || {}; return `<tr><td>${esc(g.name || ('#' + it.goodsId))}</td><td>${zoneTag(g.zone)}</td><td class="qty tnum">${it.count}</td><td class="tnum">${money(it.price)}</td><td class="tnum">${money((it.price || 0) * (it.count || 0))}</td></tr>`; }).join('') || '<tr><td colspan="5" class="muted">无明细</td></tr>'}</tbody></table></div>
+      ${o.remark ? `<div class="muted" style="margin-top:12px">备注：${esc(o.remark)}</div>` : ''}
+      <div class="modal-actions"><button class="btn btn-primary" id="mc">关闭</button></div></div>`;
+    document.body.appendChild(bg);
+    bg.querySelector('#mc').onclick = () => bg.remove();
+    bg.onclick = e => { if (e.target === bg) bg.remove(); };
+  }
+
+  async function openOrderForm(type, order) {
+    const isSale = type === 1, editing = !!order;
+    let full = order;
+    if (editing) { const r = await get('/api/orders/' + order.id); if (r.code === 200) full = r.data; }
+    const items = (full && full.items) ? full.items.slice() : [];
+    const partyList = isSale ? refs.customerList : refs.supplierList;
+    const partyVal = full ? (isSale ? full.customerId : full.supplierId) : '';
+    const goodsOpt = cur => refs.goodsList.map(g => `<option value="${g.id}" ${g.id == cur ? 'selected' : ''}>${esc(g.name)}</option>`).join('');
+    const bg = document.createElement('div'); bg.className = 'modal-bg';
+    bg.innerHTML = `<div class="modal"><h3>${editing ? '编辑' : '新建'}${isSale ? '销售' : '采购'}订单</h3>
+      <div class="form-grid">
+        <div class="field"><label>${isSale ? '客户' : '供应商'}</label><select id="oParty">${partyList.map(p => `<option value="${p.id}" ${p.id == partyVal ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
+        <div class="field"><label>状态</label><select id="oStatus">${ORDER_STATUS.map((s, i) => `<option value="${i}" ${full && full.status == i ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+        <div class="field full"><label>备注</label><input id="oRemark" value="${esc(full ? (full.remark || '') : '')}" placeholder="选填"></div>
+      </div>
+      <div class="card-h" style="margin-top:16px"><h3 style="font-size:14px">订单明细</h3><div class="right"><button class="btn btn-sm" id="addItem">+ 添加商品</button></div></div>
+      <div class="tablewrap"><table><thead><tr><th>商品</th><th>数量</th><th>单价</th><th></th></tr></thead><tbody id="itemRows"></tbody></table></div>
+      <div class="modal-actions"><button class="btn" id="mc">取消</button><button class="btn btn-primary" id="ms">保存</button></div></div>`;
+    document.body.appendChild(bg);
+    const tb = bg.querySelector('#itemRows');
+    const addRow = (it) => { const tr = document.createElement('tr');
+      tr.innerHTML = `<td><select class="i-goods">${goodsOpt(it ? it.goodsId : '')}</select></td>
+        <td style="width:96px"><input class="i-count" type="number" min="1" value="${it ? it.count : 1}"></td>
+        <td style="width:110px"><input class="i-price" type="number" min="0" step="0.01" value="${it ? (it.price || 0) : 0}"></td>
+        <td style="width:44px"><button class="btn btn-sm btn-danger i-del">×</button></td>`;
+      tb.appendChild(tr); tr.querySelector('.i-del').onclick = () => tr.remove();
+    };
+    if (items.length) items.forEach(addRow); else addRow(null);
+    bg.querySelector('#addItem').onclick = () => addRow(null);
+    bg.querySelector('#mc').onclick = () => bg.remove();
+    bg.onclick = e => { if (e.target === bg) bg.remove(); };
+    bg.querySelector('#ms').onclick = async () => {
+      const lineItems = [...tb.querySelectorAll('tr')].map(tr => ({
+        goodsId: +tr.querySelector('.i-goods').value,
+        count: +tr.querySelector('.i-count').value,
+        price: +tr.querySelector('.i-price').value
+      })).filter(x => x.goodsId && x.count > 0);
+      if (!lineItems.length) return showToast('请至少添加一条商品明细', true);
+      const partyId = bg.querySelector('#oParty').value ? +bg.querySelector('#oParty').value : null;
+      const payload = { type, status: +bg.querySelector('#oStatus').value, remark: bg.querySelector('#oRemark').value,
+        supplierId: isSale ? null : partyId, customerId: isSale ? partyId : null, items: lineItems };
+      const r = editing ? await put('/api/orders/' + full.id, payload) : await post('/api/orders', payload);
+      if (r.code === 200) { showToast('保存成功'); bg.remove(); route(); } else showToast(r.msg || '保存失败', true);
+    };
   }
 
   /* ================= 通用 CRUD ================= */
@@ -350,6 +493,7 @@
   }
   function cell(t, c, v) {
     if (c === 'type' && t === 'record') return `<span class="pill ${v === 0 ? 'in' : 'out'}"><span class="d"></span>${v === 0 ? '入库' : '出库'}</span>`;
+    if (t === 'goods' && c === 'zone') return zoneTag(v);
     let s = String(disp(t, c, v) ?? ''); if (s.length > 42) s = s.slice(0, 42) + '…'; return esc(s);
   }
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
@@ -378,6 +522,8 @@
   function fieldInput(t, c, v) {
     if (t === 'goods' && c === 'storage') return selectHtml(c, refs.storageList, v);
     if (t === 'goods' && c === 'goodsType') return selectHtml(c, refs.typeList, v);
+    if (t === 'goods' && c === 'zone') return `<select data-f="${c}">` + ZONES.map(z => `<option value="${z}" ${z === (v || '普通') ? 'selected' : ''}>${z}</option>`).join('') + `</select>`;
+    if (c === 'image') return `<input data-f="${c}" value="${esc(v)}" placeholder="图片地址（Batch3 支持上传）">`;
     if (['remark', 'content', 'address', 'data', 'result', 'description'].includes(c)) return `<textarea data-f="${c}" rows="2">${esc(v)}</textarea>`;
     const num = ['count', 'min_count', 'max_count', 'capacity', 'sort', 'age', 'parent_id', 'goods_id', 'supplier_id', 'storage_id', 'role_id', 'res_id', 'res_type', 'user_id', 'system_count', 'actual_count', 'diff_count', 'duration', 'type', 'status', 'row_no', 'col_no', 'enabled', 'locked', 'del_flag', 'loginsign'].includes(c);
     return `<input data-f="${c}" ${num ? 'type="number"' : ''} value="${esc(v)}">`;

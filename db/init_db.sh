@@ -26,6 +26,9 @@ $MYSQL $DB < "$ROOT_DIR/db/heatmap_seed.sql"
 echo "==> 加载出入库流水种子数据"
 $MYSQL $DB < "$ROOT_DIR/db/record_seed.sql"
 
+echo "==> 加载 Batch2：订单链路 + 库位分区"
+$MYSQL $DB < "$ROOT_DIR/db/batch2.sql"
+
 echo "==> 重置演示口令（admin/admin123, test/123456）"
 $MYSQL $DB < "$ROOT_DIR/db/reseed_passwords.sql"
 

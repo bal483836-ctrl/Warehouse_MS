@@ -15,6 +15,8 @@ import java.util.List;
 /**
  * 出入库核心业务：真实修改 goods.count 与库位存货 location_stock，并写入 record 流水。
  * type=0 入库，type=1 出库（与 record.type 注释一致）。
+ * 入库/出库可关联订单(orderId)；入库可附收货凭证图片(image)。
+ * 库位分区约束：商品仅能放入与其 zone（冷冻/冰鲜/普通）一致的库位。
  */
 @RestController
 @RequestMapping("/api/inout")
@@ -29,7 +31,8 @@ public class InOutController {
         this.goodsRepo = g; this.recordRepo = r; this.locStockRepo = ls; this.locationRepo = l;
     }
 
-    public record MoveReq(Integer goodsId, Integer count, String remark) {}
+    public record MoveReq(Integer goodsId, Integer count, String remark,
+                          Integer orderId, Integer supplierId, Integer customerId, String image) {}
 
     @PostMapping("/in")
     @Transactional
@@ -42,7 +45,7 @@ public class InOutController {
         g.setCount((g.getCount() == null ? 0 : g.getCount()) + req.count());
         goodsRepo.save(g);
         allocate(g, req.count());
-        return Result.ok(writeRecord(g.getId(), req.count(), 0, req.remark(), http));
+        return Result.ok(writeRecord(g.getId(), req.count(), 0, req.remark(), req.orderId(), req.image(), http));
     }
 
     @PostMapping("/out")
@@ -58,25 +61,40 @@ public class InOutController {
         g.setCount(cur - req.count());
         goodsRepo.save(g);
         deallocate(g, req.count());
-        return Result.ok(writeRecord(g.getId(), req.count(), 1, req.remark(), http));
+        // 出库不带图片
+        return Result.ok(writeRecord(g.getId(), req.count(), 1, req.remark(), req.orderId(), null, http));
     }
 
-    /** 入库：把数量放进货物所属仓库的库位（优先累加已有库位，否则新建） */
+    /** 商品所属分区，默认「普通」 */
+    private String zoneOf(Goods g) {
+        String z = g.getZone();
+        return (z == null || z.trim().isEmpty()) ? "普通" : z.trim();
+    }
+
+    /** 入库：把数量放进「同分区」的库位（优先累加已有库位，否则在匹配分区新建） */
     private void allocate(Goods g, int count) {
-        List<LocationStock> stocks = locStockRepo.findByGoodsIdOrderByIdAsc(g.getId());
-        if (!stocks.isEmpty()) {
-            LocationStock ls = stocks.get(0);
-            ls.setCount(ls.getCount() + count);
-            locStockRepo.save(ls);
-        } else {
-            List<Location> bins = locationRepo.findByStorageIdOrderByIdAsc(g.getStorage());
-            if (!bins.isEmpty()) {
-                LocationStock ls = new LocationStock();
-                ls.setLocationId(bins.get(0).getId());
-                ls.setGoodsId(g.getId());
-                ls.setCount(count);
+        String zone = zoneOf(g);
+        // 已有该商品的库位（校验其分区匹配）
+        for (LocationStock ls : locStockRepo.findByGoodsIdOrderByIdAsc(g.getId())) {
+            Location loc = locationRepo.findById(ls.getLocationId()).orElse(null);
+            if (loc != null && zone.equals(loc.getZone() == null ? "" : loc.getZone().trim())) {
+                ls.setCount(ls.getCount() + count);
                 locStockRepo.save(ls);
+                return;
             }
+        }
+        // 在商品所属仓库的匹配分区中挑一个库位
+        List<Location> bins = locationRepo.findByStorageIdAndZoneOrderByIdAsc(g.getStorage(), zone);
+        if (bins.isEmpty()) {
+            // 兼容旧数据：分区值可能带空格，退化为「仓库内首个库位」
+            bins = locationRepo.findByStorageIdOrderByIdAsc(g.getStorage());
+        }
+        if (!bins.isEmpty()) {
+            LocationStock ls = new LocationStock();
+            ls.setLocationId(bins.get(0).getId());
+            ls.setGoodsId(g.getId());
+            ls.setCount(count);
+            locStockRepo.save(ls);
         }
     }
 
@@ -93,7 +111,8 @@ public class InOutController {
         }
     }
 
-    private Record writeRecord(Integer goodsId, Integer count, int type, String remark, HttpServletRequest http) {
+    private Record writeRecord(Integer goodsId, Integer count, int type, String remark,
+                               Integer orderId, String image, HttpServletRequest http) {
         TokenStore.Principal p = (TokenStore.Principal) http.getAttribute("principal");
         Record rec = new Record();
         rec.setGoods(goodsId);
@@ -102,6 +121,8 @@ public class InOutController {
         rec.setType(type);
         rec.setCreatetime(LocalDateTime.now());
         rec.setRemark(remark);
+        rec.setOrderId(orderId);
+        rec.setImage(image);
         return recordRepo.save(rec);
     }
 }

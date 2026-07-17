@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface LocationRepo extends JpaRepository<Location, Integer> {
     List<Location> findByStorageIdOrderByIdAsc(Integer storageId);
+    List<Location> findByStorageIdAndZoneOrderByIdAsc(Integer storageId, String zone);
 }

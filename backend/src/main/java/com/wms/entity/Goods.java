@@ -19,6 +19,12 @@ public class Goods {
     private Integer goodsType;
     @Column(name = "count")
     private Integer count;
+    /** 存储分区：冷冻 / 冰鲜 / 普通，决定该商品只能放入同分区库位 */
+    @Column(name = "zone")
+    private String zone;
+    /** 商品图片（data URL 或相对路径），Batch3 详情页使用 */
+    @Column(name = "image")
+    private String image;
     @Column(name = "remark")
     private String remark;
 }
