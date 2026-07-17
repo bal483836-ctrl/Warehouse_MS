@@ -1102,16 +1102,16 @@ SET FOREIGN_KEY_CHECKS=1;
 -- ============================================================
 USE ahut_base;
 
-UPDATE `goods` SET `image`='/img/goods/1.svg'  WHERE id=1;
-UPDATE `goods` SET `image`='/img/goods/4.svg'  WHERE id=4;
-UPDATE `goods` SET `image`='/img/goods/5.svg'  WHERE id=5;
-UPDATE `goods` SET `image`='/img/goods/6.svg'  WHERE id=6;
-UPDATE `goods` SET `image`='/img/goods/7.svg'  WHERE id=7;
-UPDATE `goods` SET `image`='/img/goods/8.svg'  WHERE id=8;
-UPDATE `goods` SET `image`='/img/goods/11.svg' WHERE id=11;
-UPDATE `goods` SET `image`='/img/goods/12.svg' WHERE id=12;
-UPDATE `goods` SET `image`='/img/goods/13.svg' WHERE id=13;
+UPDATE `goods` SET `image`='/img/goods/1.jpg'  WHERE id=1;
+UPDATE `goods` SET `image`='/img/goods/4.jpg'  WHERE id=4;
+UPDATE `goods` SET `image`='/img/goods/5.jpg'  WHERE id=5;
+UPDATE `goods` SET `image`='/img/goods/6.jpg'  WHERE id=6;
+UPDATE `goods` SET `image`='/img/goods/7.jpg'  WHERE id=7;
+UPDATE `goods` SET `image`='/img/goods/8.jpg'  WHERE id=8;
+UPDATE `goods` SET `image`='/img/goods/11.jpg' WHERE id=11;
+UPDATE `goods` SET `image`='/img/goods/12.jpg' WHERE id=12;
+UPDATE `goods` SET `image`='/img/goods/13.jpg' WHERE id=13;
 
-UPDATE `supplier` SET `image`='/img/suppliers/1.svg' WHERE id=1;
-UPDATE `supplier` SET `image`='/img/suppliers/2.svg' WHERE id=2;
-UPDATE `supplier` SET `image`='/img/suppliers/3.svg' WHERE id=3;
+UPDATE `supplier` SET `image`='/img/suppliers/1.jpg' WHERE id=1;
+UPDATE `supplier` SET `image`='/img/suppliers/2.jpg' WHERE id=2;
+UPDATE `supplier` SET `image`='/img/suppliers/3.jpg' WHERE id=3;

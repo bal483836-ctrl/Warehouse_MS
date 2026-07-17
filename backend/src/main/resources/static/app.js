@@ -459,7 +459,12 @@
   /* ================= 详情/档案（商品·供应商·客户） ================= */
   const PERIODS = [['week', '周'], ['month', '月'], ['quarter', '季'], ['year', '年']];
   function imgTag(src, cls) {
-    if (src) return `<img class="${cls || ''}" src="${esc(src)}" alt="">`;
+    if (src) {
+      // 真实照片(.jpg/.png/.webp)优先；文件缺失时自动回退到同名矢量图，避免裂图
+      const fb = /^\/img\/.+\.(jpe?g|png|webp)$/i.test(src) ? src.replace(/\.(jpe?g|png|webp)$/i, '.svg') : '';
+      const onerr = fb ? ` onerror="this.onerror=null;this.src='${fb}'"` : '';
+      return `<img class="${cls || ''}" src="${esc(src)}"${onerr} alt="">`;
+    }
     return `<div class="img-ph ${cls || ''}"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.5"/><circle cx="8.5" cy="9" r="1.6" fill="currentColor"/><path d="M4 17l5-4 4 3 3-2 4 3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div>`;
   }
   function productCard(g, min, manage) {
