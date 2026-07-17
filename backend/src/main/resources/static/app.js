@@ -1,4 +1,4 @@
-/* ================= 库智 WMS 前端应用 ================= */
+/* ================= 小明智库 前端应用 ================= */
 (function () {
   const $ = (s, r = document) => r.querySelector(s);
   const tip = $('#tip'), toast = $('#toast');
@@ -106,7 +106,14 @@
     $('#avatar').textContent = (USER.name || 'U').charAt(0);
     $('#today').textContent = new Date().toLocaleDateString('zh-CN');
     $('#logout').onclick = async () => { await post('/api/auth/logout', {}); localStorage.clear(); location.href = 'login.html'; };
+    // 移动端抽屉导航
+    const app = document.querySelector('.app');
+    const mb = $('#menuBtn'), bd = $('#navBackdrop');
+    if (mb) mb.onclick = () => app.classList.toggle('nav-open');
+    if (bd) bd.onclick = () => app.classList.remove('nav-open');
+    $('#nav').addEventListener('click', e => { if (e.target.closest('a')) app.classList.remove('nav-open'); });
   }
+  const greet = () => { const h = new Date().getHours(); return h < 6 ? '凌晨好' : h < 12 ? '上午好' : h < 14 ? '中午好' : h < 18 ? '下午好' : '晚上好'; };
   function setActive(route) {
     document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('active', a.dataset.route === route));
   }
@@ -115,6 +122,7 @@
   async function route() {
     const hash = location.hash.slice(2) || 'dashboard';
     const view = $('#view');
+    view.innerHTML = '<div class="loading"><div class="spin"></div></div>';
     try {
       if (hash === 'dashboard') { setActive('dashboard'); await renderDashboard(view); }
       else if (hash === 'alerts') { setActive('alerts'); await renderAlerts(view); }
@@ -155,7 +163,7 @@
   /* ================= 仪表盘 ================= */
   async function renderDashboard(view) {
     $('#pageTitle').textContent = '运营总览';
-    $('#pageSub').textContent = `下午好，${USER.name || ''} · 实时库存与出入库概览`;
+    $('#pageSub').textContent = `${greet()}，${USER.name || ''} · 实时库存与出入库概览`;
     const [kpi, cat, trend, hmStores] = await Promise.all([
       get('/api/stats/kpi'), get('/api/stats/category'), get('/api/stats/trend'), get('/api/heatmap/storages')
     ]);
@@ -709,6 +717,7 @@
     if (v == null) return '';
     if (t === 'goods' && c === 'storage') return refs.storage[v] || v;
     if (t === 'goods' && c === 'goodsType') return refs.goodstype[v] || v;
+    if (t === 'record' && c === 'goods') return (refs.goods[v] || ('#' + v));
     if (c === 'type' && (t === 'record')) return v === 0 ? '入库' : '出库';
     if (c === 'user_id') return refs.user[v] || v;
     return v;
@@ -771,6 +780,10 @@
     buildNav();
     await loadRefs();
     window.addEventListener('hashchange', route);
+    // Esc 关闭最上层弹窗
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { const m = document.querySelectorAll('.modal-bg'); if (m.length) m[m.length - 1].remove(); }
+    });
     if (!location.hash) location.hash = '#/dashboard';
     route();
     let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if ((location.hash.slice(2) || 'dashboard') === 'dashboard') route(); }, 200); });

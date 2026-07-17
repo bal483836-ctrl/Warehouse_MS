@@ -33,4 +33,10 @@ public class Customer {
     private java.time.LocalDateTime updateTime;
     @Column(name = "update_by")
     private String updateBy;
+
+    @PrePersist
+    void onCreate() {
+        if (createTime == null) createTime = java.time.LocalDateTime.now();
+        if (delFlag == null) delFlag = 0;
+    }
 }
