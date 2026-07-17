@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+	<settings>
+		<setting name="lazyLoadingEnabled" value="true"/>
+		<setting name="aggressiveLazyLoading" value="false"/>
+		<!-- 开启下划线到驼峰的自动映射：goods_type -> goodsType -->
+		<setting name="mapUnderscoreToCamelCase" value="true"/>
+		<setting name="useGeneratedKeys" value="true"/>
+	</settings>
+	<!-- 引入 PageHelper 分页插件 -->
+	<plugins>
+		<plugin interceptor="com.github.pagehelper.PageInterceptor"></plugin>
+	</plugins>
+</configuration>
