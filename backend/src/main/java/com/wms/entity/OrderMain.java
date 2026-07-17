@@ -31,6 +31,16 @@ public class OrderMain {
     private java.math.BigDecimal totalAmount;
     @Column(name = "order_time")
     private java.time.LocalDateTime orderTime;
+    /** 买家（销售单，toC 门店散客/客户名） */
+    @Column(name = "buyer")
+    private String buyer;
+    /** 经手账号（sys_user.id） */
+    @Column(name = "operator_id")
+    private Integer operatorId;
+    @Column(name = "cancel_reason")
+    private String cancelReason;
+    @Column(name = "cancel_time")
+    private java.time.LocalDateTime cancelTime;
     @Column(name = "remark")
     private String remark;
 }

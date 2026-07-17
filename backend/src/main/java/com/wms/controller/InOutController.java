@@ -10,13 +10,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.*;
 
 /**
- * 出入库核心业务：真实修改 goods.count 与库位存货 location_stock，并写入 record 流水。
- * type=0 入库，type=1 出库（与 record.type 注释一致）。
- * 入库/出库可关联订单(orderId)；入库可附收货凭证图片(image)。
- * 库位分区约束：商品仅能放入与其 zone（冷冻/冰鲜/普通）一致的库位。
+ * 出入库核心业务：真实修改 goods.count 与库位存货 location_stock（按批次记录入库/到期），
+ * 并写入 record 流水。type=0 入库，type=1 出库。
+ * 入库可指定落位库位(货架)与关联订单，可传收货凭证；库位分区须与商品 zone 一致。
+ * 出库按「先到期先出」扣减。
  */
 @RestController
 @RequestMapping("/api/inout")
@@ -32,7 +32,7 @@ public class InOutController {
     }
 
     public record MoveReq(Integer goodsId, Integer count, String remark,
-                          Integer orderId, Integer supplierId, Integer customerId, String image) {}
+                          Integer orderId, Integer locationId, String image) {}
 
     @PostMapping("/in")
     @Transactional
@@ -42,10 +42,14 @@ public class InOutController {
         Goods g = goodsRepo.findById(req.goodsId()).orElse(null);
         if (g == null) return Result.fail("货物不存在");
 
+        // 选定落位库位：校验属于商品所属仓库且分区一致
+        Location loc = pickLocation(g, req.locationId());
+        if (loc == null) return Result.fail("该商品所属仓库的「" + zoneOf(g) + "」分区暂无可用库位，请先在货位管理中添加");
+
         g.setCount((g.getCount() == null ? 0 : g.getCount()) + req.count());
         goodsRepo.save(g);
-        allocate(g, req.count());
-        return Result.ok(writeRecord(g.getId(), req.count(), 0, req.remark(), req.orderId(), req.image(), http));
+        allocate(g, loc, req.count());
+        return Result.ok(writeRecord(g.getId(), req.count(), 0, req.remark(), req.orderId(), loc.getId(), req.image(), http));
     }
 
     @PostMapping("/out")
@@ -61,47 +65,49 @@ public class InOutController {
         g.setCount(cur - req.count());
         goodsRepo.save(g);
         deallocate(g, req.count());
-        // 出库不带图片
-        return Result.ok(writeRecord(g.getId(), req.count(), 1, req.remark(), req.orderId(), null, http));
+        return Result.ok(writeRecord(g.getId(), req.count(), 1, req.remark(), req.orderId(), null, null, http));
     }
 
-    /** 商品所属分区，默认「普通」 */
     private String zoneOf(Goods g) {
         String z = g.getZone();
         return (z == null || z.trim().isEmpty()) ? "普通" : z.trim();
     }
 
-    /** 入库：把数量放进「同分区」的库位（优先累加已有库位，否则在匹配分区新建） */
-    private void allocate(Goods g, int count) {
+    /** 选定入库落位：优先用户指定，否则在商品所属仓库的同分区里挑第一个 */
+    private Location pickLocation(Goods g, Integer locationId) {
         String zone = zoneOf(g);
-        // 已有该商品的库位（校验其分区匹配）
-        for (LocationStock ls : locStockRepo.findByGoodsIdOrderByIdAsc(g.getId())) {
-            Location loc = locationRepo.findById(ls.getLocationId()).orElse(null);
-            if (loc != null && zone.equals(loc.getZone() == null ? "" : loc.getZone().trim())) {
-                ls.setCount(ls.getCount() + count);
-                locStockRepo.save(ls);
-                return;
-            }
+        if (locationId != null) {
+            Location loc = locationRepo.findById(locationId).orElse(null);
+            if (loc != null && Objects.equals(loc.getStorageId(), g.getStorage())
+                    && zone.equals(loc.getZone() == null ? "" : loc.getZone().trim())) return loc;
+            return null;
         }
-        // 在商品所属仓库的匹配分区中挑一个库位
         List<Location> bins = locationRepo.findByStorageIdAndZoneOrderByIdAsc(g.getStorage(), zone);
-        if (bins.isEmpty()) {
-            // 兼容旧数据：分区值可能带空格，退化为「仓库内首个库位」
-            bins = locationRepo.findByStorageIdOrderByIdAsc(g.getStorage());
-        }
-        if (!bins.isEmpty()) {
-            LocationStock ls = new LocationStock();
-            ls.setLocationId(bins.get(0).getId());
-            ls.setGoodsId(g.getId());
-            ls.setCount(count);
-            locStockRepo.save(ls);
-        }
+        if (bins.isEmpty()) bins = locationRepo.findByStorageIdOrderByIdAsc(g.getStorage());
+        return bins.isEmpty() ? null : bins.get(0);
     }
 
-    /** 出库：按库位 FIFO 扣减存货 */
+    /** 入库：在指定库位新增一条批次存货（记录入库日期与到期日期） */
+    private void allocate(Goods g, Location loc, int count) {
+        LocalDateTime now = LocalDateTime.now();
+        // 同库位、同到期日的批次合并，否则新建
+        LocalDateTime expiry = (g.getShelfLifeDays() != null) ? now.plusDays(g.getShelfLifeDays()) : null;
+        LocationStock ls = new LocationStock();
+        ls.setLocationId(loc.getId());
+        ls.setGoodsId(g.getId());
+        ls.setCount(count);
+        ls.setInboundDate(now);
+        ls.setExpiryDate(expiry);
+        locStockRepo.save(ls);
+    }
+
+    /** 出库：按「先到期先出」扣减各批次库存 */
     private void deallocate(Goods g, int count) {
+        List<LocationStock> lots = new ArrayList<>(locStockRepo.findByGoodsIdOrderByIdAsc(g.getId()));
+        lots.sort(Comparator.comparing((LocationStock l) -> l.getExpiryDate() == null ? LocalDateTime.MAX : l.getExpiryDate())
+                .thenComparing(LocationStock::getId));
         int remaining = count;
-        for (LocationStock ls : locStockRepo.findByGoodsIdOrderByIdAsc(g.getId())) {
+        for (LocationStock ls : lots) {
             if (remaining <= 0) break;
             int take = Math.min(ls.getCount(), remaining);
             ls.setCount(ls.getCount() - take);
@@ -112,7 +118,7 @@ public class InOutController {
     }
 
     private Record writeRecord(Integer goodsId, Integer count, int type, String remark,
-                               Integer orderId, String image, HttpServletRequest http) {
+                               Integer orderId, Integer locationId, String image, HttpServletRequest http) {
         TokenStore.Principal p = (TokenStore.Principal) http.getAttribute("principal");
         Record rec = new Record();
         rec.setGoods(goodsId);
@@ -122,6 +128,7 @@ public class InOutController {
         rec.setCreatetime(LocalDateTime.now());
         rec.setRemark(remark);
         rec.setOrderId(orderId);
+        rec.setLocationId(locationId);
         rec.setImage(image);
         return recordRepo.save(rec);
     }

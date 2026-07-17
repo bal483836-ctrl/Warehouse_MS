@@ -25,6 +25,12 @@ public class Goods {
     /** 商品图片（data URL 或相对路径），Batch3 详情页使用 */
     @Column(name = "image")
     private String image;
+    /** 保质期天数（空=不易过期） */
+    @Column(name = "shelf_life_days")
+    private Integer shelfLifeDays;
+    /** 到期前多少天预警清理 */
+    @Column(name = "cleanup_warn_days")
+    private Integer cleanupWarnDays;
     @Column(name = "remark")
     private String remark;
 }

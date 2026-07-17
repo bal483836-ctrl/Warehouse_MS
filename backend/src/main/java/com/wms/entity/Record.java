@@ -29,4 +29,7 @@ public class Record {
     /** 入库单据/收货凭证图片（data URL 或相对路径），仅入库可选填 */
     @Column(name = "image")
     private String image;
+    /** 入库落位的库位id（货架位置） */
+    @Column(name = "location_id")
+    private Integer locationId;
 }

@@ -61,6 +61,24 @@ public class AuthController {
                 .map(Result::ok).orElseGet(() -> Result.fail(401, "用户不存在"));
     }
 
+    public record ChangePwdReq(String oldPassword, String newPassword) {}
+
+    /** 修改密码：校验原密码，重新按 salt 散列保存 */
+    @PostMapping("/changePassword")
+    public Result<Void> changePassword(@RequestBody ChangePwdReq req, HttpServletRequest http) {
+        TokenStore.Principal p = (TokenStore.Principal) http.getAttribute("principal");
+        if (p == null) return Result.fail(401, "未登录");
+        if (req.oldPassword() == null || req.newPassword() == null || req.newPassword().trim().length() < 6)
+            return Result.fail("新密码至少 6 位");
+        SysUser u = userRepo.findById(p.userId()).orElse(null);
+        if (u == null) return Result.fail("用户不存在");
+        if (!Md5Util.hashPassword(req.oldPassword(), u.getSalt()).equalsIgnoreCase(u.getPassword()))
+            return Result.fail("原密码错误");
+        u.setPassword(Md5Util.hashPassword(req.newPassword().trim(), u.getSalt()));
+        userRepo.save(u);
+        return Result.ok();
+    }
+
     private Map<String, Object> safeUser(SysUser u) {
         Map<String, Object> m = new HashMap<>();
         m.put("id", u.getId());

@@ -17,4 +17,8 @@ public class LocationStock {
     private Integer goodsId;
     @Column(name = "count")
     private Integer count;
+    @Column(name = "inbound_date")
+    private java.time.LocalDateTime inboundDate;
+    @Column(name = "expiry_date")
+    private java.time.LocalDateTime expiryDate;
 }
