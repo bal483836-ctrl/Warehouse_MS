@@ -12,11 +12,44 @@
 | JDK 17 或更高 | Spring Boot 3 要求 |
 | MySQL 8.0（或 MariaDB 10） | 本机安装并启动，默认端口 3306 |
 | IntelliJ IDEA | 社区版即可（内置 Maven）|
+| Git | 用于拉取代码 |
 | Navicat / MySQL Workbench | 可选，用于导入 SQL（也可用 IDEA 自带数据库工具）|
 
 ---
 
-## 1. 初始化数据库（只需一次）
+## 1. 拉取代码
+
+> ⚠️ 全部代码在分支 **`claude/project-code-review-schema-xvstgk`** 上，默认的 `master` 分支是空的，
+> 拉下来后**必须切到这个分支**，否则看不到 `backend/`、`db/` 等目录。
+
+**方式 A：克隆时直接指定分支（推荐）**
+```bash
+git clone -b claude/project-code-review-schema-xvstgk https://github.com/bal483836-ctrl/Warehouse_MS.git
+cd Warehouse_MS
+```
+
+**方式 B：先克隆再切分支**
+```bash
+git clone https://github.com/bal483836-ctrl/Warehouse_MS.git
+cd Warehouse_MS
+git checkout claude/project-code-review-schema-xvstgk
+```
+
+拉下来后目录应包含：
+```
+Warehouse_MS/
+├── backend/                 后端工程（IDEA 打开这个目录）
+├── db/ahut_base_full.sql    一键导入的完整数据库脚本
+├── IDEA部署指南.md          （本文件）
+└── ahut_base_clean.sql ...  分步 SQL、原型、文档等
+```
+
+> 也可以在 IDEA 里拉：**File → New → Project from Version Control** → 填仓库地址 → 克隆后，
+> 底部 **Git 分支** 处切到 `claude/project-code-review-schema-xvstgk`。
+
+---
+
+## 2. 初始化数据库（只需一次）
 
 用 **root** 执行仓库根目录的一键脚本 **`db/ahut_base_full.sql`**（已包含建库、建账号、
 18 张表结构与数据、库位模型、流水、演示口令）。任选一种方式：
@@ -38,7 +71,7 @@ mysql -uroot -p < db/ahut_base_full.sql
 
 ---
 
-## 2. 用 IDEA 打开项目
+## 3. 用 IDEA 打开项目
 
 1. IDEA → **File → Open** → 选择本仓库的 **`backend`** 目录（含 `pom.xml`）→ OK。
 2. IDEA 识别为 Maven 工程后会自动下载依赖（右下角进度，首次约 1–2 分钟）。
@@ -47,7 +80,7 @@ mysql -uroot -p < db/ahut_base_full.sql
 
 ---
 
-## 3. 配置数据库连接
+## 4. 配置数据库连接
 
 打开 `backend/src/main/resources/application.yml`，核对 `spring.datasource`：
 
@@ -66,7 +99,7 @@ spring:
 
 ---
 
-## 4. 运行
+## 5. 运行
 
 - 找到 `backend/src/main/java/com/wms/WmsApplication.java` → 点主方法左侧绿色 ▶ → **Run 'WmsApplication'**。
 - 或 IDEA 右侧 Maven 面板 → `warehouse-ms → Plugins → spring-boot → spring-boot:run`。
@@ -75,7 +108,7 @@ spring:
 
 ---
 
-## 5. 访问
+## 6. 访问
 
 浏览器打开 **http://localhost:8080** → 登录 **admin / admin123**。
 
