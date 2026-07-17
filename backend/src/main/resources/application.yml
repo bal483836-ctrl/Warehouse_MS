@@ -5,7 +5,7 @@ spring:
   application:
     name: warehouse-ms
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/ahut_base?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
+    url: jdbc:mysql://127.0.0.1:3306/ahut_base?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
     username: wms
     password: wms123456
     driver-class-name: com.mysql.cj.jdbc.Driver

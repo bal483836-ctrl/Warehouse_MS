@@ -1,8 +1,5 @@
 -- heatmap real-data model: bins with capacity + physical stock placement
-ALTER TABLE `location` ADD COLUMN IF NOT EXISTS `zone` varchar(4) DEFAULT NULL COMMENT '库区',
- ADD COLUMN IF NOT EXISTS `row_no` int DEFAULT NULL COMMENT '排',
- ADD COLUMN IF NOT EXISTS `col_no` int DEFAULT NULL COMMENT '列',
- ADD COLUMN IF NOT EXISTS `capacity` int DEFAULT 500 COMMENT '库位容量';
+-- 注：zone/row_no/col_no/capacity 列已在 ahut_base_extend.sql 的 location 建表中定义
 DELETE FROM `location`;
 DROP TABLE IF EXISTS `location_stock`;
 CREATE TABLE `location_stock`(

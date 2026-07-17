@@ -148,13 +148,17 @@ CREATE TABLE `location` (
   `storage_id` int NOT NULL COMMENT '所属仓库id（关联 storage.id）',
   `code` varchar(50) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL COMMENT '库位编码',
   `name` varchar(100) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '库位名称',
+  `zone` varchar(4) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '库区',
+  `row_no` int DEFAULT NULL COMMENT '排',
+  `col_no` int DEFAULT NULL COMMENT '列',
+  `capacity` int DEFAULT '500' COMMENT '库位容量',
   `remark` varchar(1000) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb3 ROW_FORMAT=DYNAMIC COMMENT='货位表';
 
-INSERT INTO `location` VALUES ('1', '2', 'A-01-01', '数码仓A区1排1位', '存放手机');
-INSERT INTO `location` VALUES ('2', '5', 'B-02-03', '果蔬仓B区2排3位', '存放水果');
-INSERT INTO `location` VALUES ('3', '10', 'C-01-01', '日用品仓C区1排1位', '存放洗护');
+INSERT INTO `location` (`id`,`storage_id`,`code`,`name`,`remark`) VALUES ('1', '2', 'A-01-01', '数码仓A区1排1位', '存放手机');
+INSERT INTO `location` (`id`,`storage_id`,`code`,`name`,`remark`) VALUES ('2', '5', 'B-02-03', '果蔬仓B区2排3位', '存放水果');
+INSERT INTO `location` (`id`,`storage_id`,`code`,`name`,`remark`) VALUES ('3', '10', 'C-01-01', '日用品仓C区1排1位', '存放洗护');
 
 -- ==========================================================================
 -- 7. 系统公告表 sys_notice —— 内部通知/公告发布
