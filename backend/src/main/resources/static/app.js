@@ -47,29 +47,25 @@
     sys_log:         { label: '操作日志', cols: ['id', 'content', 'ip_addr', 'user_id', 'create_time', 'duration'], readonly: true }
   };
   const NAV = [
-    { group: '概览', items: [['dashboard', '运营总览', 'M3 12 12 4l9 8M5 10v10h14V10']] },
-    { group: '业务', items: [
+    { group: '概览', items: [
+      ['dashboard', '运营总览', 'M3 12 12 4l9 8M5 10v10h14V10'],
+      ['alerts', '预警看板', 'M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Zm3 10a3 3 0 0 0 6 0'] ] },
+    { group: '进销存', items: [
       ['inout', '出入库操作', 'M3 7l9-4 9 4-9 4-9-4Zm0 5 9 4 9-4M3 17l9 4 9-4'],
       ['t/record', '出入库记录', 'M4 5h16v14H4zM4 9h16'],
       ['t/goods', '商品档案', 'M20 7 12 3 4 7v10l8 4 8-4V7Z'],
-      ['t/goodstype', '商品分类', 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'],
+      ['t/goodstype', '商品分类', 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'] ] },
+    { group: '仓储', items: [
       ['t/storage', '仓库管理', 'M4 21V8l8-5 8 5v13'],
-      ['t/location', '货位管理', 'M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11Z'] ] },
+      ['t/location', '货位管理', 'M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11Z'],
+      ['t/stock_alert', '预警阈值', 'M12 3 2 20h20L12 3Zm0 7v4m0 3h.01'] ] },
     { group: '供应链', items: [
       ['t/supplier', '供应商', 'M3 7h18v13H3zM3 7l3-4h12l3 4'],
       ['t/customer', '客户', 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21a8 8 0 0 1 16 0'],
       ['t/goods_batch', '批次/保质期', 'M12 8v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'] ] },
-    { group: '库存运营', items: [
-      ['t/stock_alert', '库存预警', 'M12 3 2 20h20L12 3Zm0 7v4m0 3h.01'],
-      ['t/stock_check', '库存盘点', 'M9 11l3 3 8-8M4 20h16'],
-      ['t/stock_check_item', '盘点明细', 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01'] ] },
     { group: '系统', items: [
       ['t/sys_user', '用户管理', 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21a8 8 0 0 1 16 0'],
       ['t/sys_role', '角色管理', 'M12 2 4 5v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V5l-8-3Z'],
-      ['t/sys_menu', '菜单管理', 'M4 6h16M4 12h16M4 18h16'],
-      ['t/sys_user_role', '用户角色', 'M9 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20a6 6 0 0 1 12 0M16 6a3 3 0 1 1 0 6'],
-      ['t/sys_role_res', '角色资源', 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4z'],
-      ['t/sys_notice', '系统公告', 'M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z'],
       ['t/sys_log', '操作日志', 'M4 4h16v16H4zM8 9h8M8 13h5'] ] }
   ];
   const LABELS = { id:'ID', name:'名称', remark:'备注', count:'数量', storage:'仓库', goodsType:'分类', goods:'货品',
@@ -117,10 +113,35 @@
     const view = $('#view');
     try {
       if (hash === 'dashboard') { setActive('dashboard'); await renderDashboard(view); }
+      else if (hash === 'alerts') { setActive('alerts'); await renderAlerts(view); }
       else if (hash === 'inout') { setActive('inout'); await renderInout(view); }
       else if (hash.startsWith('t/')) { const t = hash.slice(2); setActive(hash); await renderTable(view, t); }
       else { view.innerHTML = '<div class="card">页面不存在</div>'; }
     } catch (e) { if (e.message !== '401') view.innerHTML = `<div class="card">加载失败：${e.message}</div>`; }
+  }
+
+  /* ================= 预警看板（低库存商品公告） ================= */
+  async function renderAlerts(view) {
+    $('#pageTitle').textContent = '预警看板';
+    $('#pageSub').textContent = '库存低于安全下限的商品，请及时补货';
+    const res = await get('/api/stats/lowstock');
+    const list = res.data || [];
+    view.innerHTML = `
+      <section class="card">
+        <div class="card-h"><div><h3>库存预警公告</h3><div class="desc">共 ${list.length} 项商品需要补货</div></div></div>
+        ${list.length === 0 ? '<div class="muted" style="padding:30px 0;text-align:center">✓ 暂无预警，库存充足</div>' : `
+        <div class="tablewrap" style="margin-top:8px"><table>
+          <thead><tr><th>商品</th><th>仓库</th><th>当前库存</th><th>安全下限</th><th>缺口</th><th>状态</th></tr></thead>
+          <tbody>${list.map(r => `<tr>
+            <td>${r.name}</td>
+            <td class="muted">${r.storageName || '-'}</td>
+            <td class="qty neg tnum">${r.count}</td>
+            <td class="tnum">${r.minCount}</td>
+            <td class="qty neg tnum">-${Math.max(0, r.minCount - r.count)}</td>
+            <td><span class="pill" style="color:var(--crit);background:var(--crit-wash)"><span class="d"></span>需补货</span></td>
+          </tr>`).join('')}</tbody>
+        </table></div>`}
+      </section>`;
   }
 
   /* ================= 仪表盘 ================= */
@@ -190,7 +211,7 @@
 
   /* ---- trend chart ---- */
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  function smooth(pts) { if (pts.length < 2) return ''; let d = 'M' + pts[0][0] + ' ' + pts[0][1];
+  function smooth(pts) { if (pts.length === 0) return 'M0 0'; if (pts.length === 1) return 'M' + pts[0][0] + ' ' + pts[0][1]; let d = 'M' + pts[0][0] + ' ' + pts[0][1];
     for (let i = 0; i < pts.length - 1; i++) { const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
       d += ` C${(p1[0] + (p2[0] - p0[0]) / 6).toFixed(1)} ${(p1[1] + (p2[1] - p0[1]) / 6).toFixed(1)} ${(p2[0] - (p3[0] - p1[0]) / 6).toFixed(1)} ${(p2[1] - (p3[1] - p1[1]) / 6).toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`; } return d; }
   function drawTrend(d) {

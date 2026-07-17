@@ -69,4 +69,17 @@ public class StatsController {
             "GROUP BY gt.id, gt.name HAVING value > 0 ORDER BY value DESC");
         return Result.ok(rows);
     }
+
+    /** 低库存商品（当前库存 < 安全下限），用于预警看板 */
+    @GetMapping("/lowstock")
+    public Result<List<Map<String, Object>>> lowstock() {
+        List<Map<String, Object>> rows = jdbc.queryForList(
+            "SELECT g.id, g.name, g.count, sa.min_count minCount, s.name storageName " +
+            "FROM stock_alert sa " +
+            "JOIN goods g ON g.id = sa.goods_id " +
+            "LEFT JOIN storage s ON s.id = g.storage " +
+            "WHERE sa.enabled = 1 AND g.count < sa.min_count " +
+            "ORDER BY (sa.min_count - g.count) DESC");
+        return Result.ok(rows);
+    }
 }

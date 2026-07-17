@@ -1,20 +1,16 @@
 -- ============================================================
 -- 库智 WMS 完整数据库脚本（一次性导入，以 root 运行）
 -- 适用 MySQL 8.0+ / MariaDB 10.x
--- 包含：建库 + 应用账号 + 18 张表结构与数据 + 库位模型 + 流水 + 演示口令
 -- ============================================================
 CREATE DATABASE IF NOT EXISTS ahut_base DEFAULT CHARACTER SET utf8mb4;
-
--- 应用连接账号（application.yml 默认用它；也可改用你的 root）
 CREATE USER IF NOT EXISTS 'wms'@'localhost' IDENTIFIED BY 'wms123456';
 CREATE USER IF NOT EXISTS 'wms'@'127.0.0.1' IDENTIFIED BY 'wms123456';
 GRANT ALL PRIVILEGES ON ahut_base.* TO 'wms'@'localhost';
 GRANT ALL PRIVILEGES ON ahut_base.* TO 'wms'@'127.0.0.1';
 FLUSH PRIVILEGES;
-
 USE ahut_base;
 
--- ---- 1. 基础表结构与数据（10 张）----
+-- 1. 基础表结构与数据
 /*
 Navicat MySQL Data Transfer
 
@@ -345,7 +341,7 @@ INSERT INTO `sys_user_role` VALUES ('1', '1', '1');
 INSERT INTO `sys_user_role` VALUES ('2', '2', '3');
 INSERT INTO `sys_user_role` VALUES ('3', '5', '3');
 
--- ---- 2. 扩展业务表（+8 张，含货位容量列）----
+-- 2. 扩展业务表
 /*
 ==========================================================================
  仓库管理系统 —— 功能扩展脚本 (ahut_base_extend.sql)
@@ -568,7 +564,7 @@ INSERT INTO `sys_role_res` VALUES ('70', '1', '45', '2');
 
 SET FOREIGN_KEY_CHECKS=1;
 
--- ---- 3. 库位热力图模型 + 库位存货 ----
+-- 3. 库位热力图模型
 -- heatmap real-data model: bins with capacity + physical stock placement
 -- 注：zone/row_no/col_no/capacity 列已在 ahut_base_extend.sql 的 location 建表中定义
 DELETE FROM `location`;
@@ -855,64 +851,30 @@ INSERT INTO `location_stock`(id,location_id,goods_id,count) VALUES(16,57,12,500)
 INSERT INTO `location_stock`(id,location_id,goods_id,count) VALUES(17,58,12,50);
 INSERT INTO `location_stock`(id,location_id,goods_id,count) VALUES(18,210,13,90);
 
--- ---- 4. 出入库流水种子 ----
+-- 4. 出入库流水种子（精简）
 DELETE FROM record;
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(1,5,2,44,'2026-02-03 16:06:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(2,8,1,129,'2026-02-02 09:27:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(3,11,1,66,'2026-02-18 14:03:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(4,4,1,51,'2026-02-19 17:25:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(5,1,1,88,'2026-02-10 14:09:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(6,13,1,177,'2026-02-18 18:11:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(7,4,1,69,'2026-02-18 19:04:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(8,1,1,292,'2026-02-14 20:20:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(9,12,2,173,'2026-02-08 20:11:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(10,4,2,273,'2026-03-11 19:28:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(11,7,1,282,'2026-03-14 10:48:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(12,8,1,235,'2026-03-02 18:04:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(13,13,2,199,'2026-03-20 15:37:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(14,12,1,158,'2026-03-16 19:42:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(15,4,1,178,'2026-03-21 17:43:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(16,12,2,217,'2026-03-22 13:01:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(17,12,2,79,'2026-03-16 08:13:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(18,5,1,220,'2026-04-16 09:10:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(19,12,2,162,'2026-04-05 14:55:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(20,13,2,232,'2026-04-12 18:56:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(21,11,1,62,'2026-04-06 10:14:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(22,6,1,113,'2026-04-09 12:00:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(23,5,2,209,'2026-04-20 17:20:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(24,5,1,220,'2026-04-13 14:25:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(25,4,2,225,'2026-04-02 11:04:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(26,6,2,76,'2026-04-11 17:03:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(27,1,1,71,'2026-05-12 17:01:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(28,4,1,212,'2026-05-05 18:16:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(29,8,2,82,'2026-05-04 15:29:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(30,12,2,63,'2026-05-05 09:47:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(31,8,2,102,'2026-05-17 08:13:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(32,13,2,298,'2026-05-01 20:33:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(33,7,1,153,'2026-05-17 13:58:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(34,8,1,297,'2026-06-25 16:21:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(35,6,1,225,'2026-06-24 20:14:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(36,6,2,34,'2026-06-01 20:17:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(37,12,2,196,'2026-06-15 20:59:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(38,8,2,132,'2026-06-04 11:30:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(39,6,2,267,'2026-06-20 17:53:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(40,1,2,196,'2026-06-26 18:05:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(41,4,2,122,'2026-06-16 10:27:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(42,4,2,225,'2026-07-12 09:46:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(43,5,1,34,'2026-07-03 17:57:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(44,12,1,262,'2026-07-11 13:09:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(45,13,1,27,'2026-07-13 19:41:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(46,4,1,119,'2026-07-14 11:01:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(47,7,1,276,'2026-07-04 20:37:00','采购入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(48,8,2,234,'2026-07-14 10:03:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(49,8,2,284,'2026-07-07 16:08:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(50,13,1,281,'2026-07-01 15:49:00','销售出库',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(51,1,1,120,'2026-07-16 10:38:00','新到货入库',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(52,12,1,300,'2026-07-16 09:49:00','补货',0);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(53,5,1,80,'2026-07-16 15:09:00','门店调拨',1);
-INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(54,13,1,30,'2026-07-16 10:09:00','零售出库',1);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(1,12,1,249,'2026-02-25 16:28:00','销售出库',1);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(2,13,1,78,'2026-02-06 17:30:00','销售出库',1);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(3,5,1,144,'2026-02-10 11:05:00','采购入库',0);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(4,13,1,192,'2026-03-02 18:25:00','销售出库',1);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(5,12,1,219,'2026-03-20 11:39:00','销售出库',1);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(6,1,1,46,'2026-03-02 09:12:00','销售出库',1);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(7,6,1,37,'2026-04-25 16:20:00','销售出库',1);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(8,12,1,245,'2026-04-07 17:14:00','销售出库',1);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(9,7,1,31,'2026-04-22 10:29:00','采购入库',0);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(10,7,1,171,'2026-05-03 13:20:00','采购入库',0);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(11,6,1,103,'2026-05-01 10:36:00','销售出库',1);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(12,4,1,57,'2026-05-10 15:04:00','采购入库',0);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(13,1,1,30,'2026-06-07 12:59:00','销售出库',1);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(14,1,1,126,'2026-06-23 15:26:00','采购入库',0);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(15,4,1,191,'2026-06-07 13:21:00','销售出库',1);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(16,4,1,115,'2026-07-01 15:48:00','采购入库',0);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(17,4,1,93,'2026-07-12 10:00:00','采购入库',0);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(18,1,1,234,'2026-07-08 11:43:00','采购入库',0);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(19,1,1,120,'2026-07-16 13:12:00','新到货入库',0);
+INSERT INTO record(id,goods,user_id,count,createtime,remark,type) VALUES(20,5,1,60,'2026-07-16 12:32:00','门店出货',1);
 
--- ---- 5. 重置演示口令（admin/admin123, test/123456）----
+-- 5. 重置演示口令
 -- 将演示用户口令重置为已知值（散列方案：md5(md5(password)+salt)）
 --   admin / admin123
 --   test  / 123456
