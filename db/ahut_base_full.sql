@@ -902,7 +902,7 @@ SET FOREIGN_KEY_CHECKS=0;
 -- 1. goods：存储分区 + 商品图片
 -- ------------------------------------------------------------
 ALTER TABLE `goods` ADD COLUMN `zone` varchar(10) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT '普通' COMMENT '存储分区:冷冻/冰鲜/普通';
-ALTER TABLE `goods` ADD COLUMN `image` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '商品图片(dataURL或路径)';
+ALTER TABLE `goods` ADD COLUMN `image` mediumtext CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci COMMENT '商品图片(dataURL或路径)';
 
 -- 分区归类：皮皮虾冷冻、葡萄/西红柿冰鲜，其余普通
 UPDATE `goods` SET `zone`='冷冻' WHERE id IN (7);
@@ -916,7 +916,7 @@ UPDATE `storage` SET `name`='生鲜仓库', `remark`='冷冻/冰鲜/普通三分
 -- 2. record：关联订单 + 收货凭证图片
 -- ------------------------------------------------------------
 ALTER TABLE `record` ADD COLUMN `order_id` int DEFAULT NULL COMMENT '关联订单id';
-ALTER TABLE `record` ADD COLUMN `image` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '入库收货凭证图片';
+ALTER TABLE `record` ADD COLUMN `image` mediumtext CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci COMMENT '入库收货凭证图片';
 
 -- ------------------------------------------------------------
 -- 3. orders 订单主表
@@ -1019,5 +1019,33 @@ INSERT INTO `location_stock`(location_id,goods_id,count) VALUES
 UPDATE `stock_alert` SET `min_count`=120 WHERE goods_id=13;                 -- 牙膏 90/120 轻度
 INSERT INTO `stock_alert` (goods_id,min_count,max_count,enabled,remark)
  VALUES (8,800,3000,1,'AD钙安全库存(演示低库存预警)');                       -- AD钙 400/800 中度
+
+SET FOREIGN_KEY_CHECKS=1;
+
+
+-- ============================================================
+-- 5. Batch 3 增量：详情页配图 + 关系数据（详见 db/batch3.sql）
+-- ============================================================
+-- ============================================================
+-- 库智 WMS · Batch 3 增量脚本：详情页 + 配图 + 关系数据
+-- ------------------------------------------------------------
+--  1) supplier 增加 image 列（供应商图片/Logo）
+--  2) 补充采购订单，使「日化用品批发商」也关联所供日用品，丰富供应商详情
+--  说明：商品图片列 goods.image 已在 batch2.sql 建立；本脚本仅补供应商图片与关系数据。
+--  依赖：batch2.sql 已执行（orders / order_item / goods.image 等已存在）。
+--  适用：MySQL 8.0+ / MariaDB 10.x
+-- ============================================================
+USE ahut_base;
+SET FOREIGN_KEY_CHECKS=0;
+
+-- 1. supplier：图片列
+ALTER TABLE `supplier` ADD COLUMN `image` mediumtext CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci COMMENT '供应商图片(dataURL或路径)';
+
+-- 2. 补充「日化用品批发商(id=3)」的采购订单，供应 洁面乳/牙膏
+INSERT INTO `orders` (id,order_no,type,supplier_id,customer_id,status,total_amount,order_time,remark)
+ VALUES (5,'PO20260708093000',0,3,NULL,1,1296.00,'2026-07-08 09:30:00','日化用品采购单');
+INSERT INTO `order_item` (id,order_id,goods_id,count,price,remark) VALUES
+ (8,5,4,100,9.00,'洁面乳'),
+ (9,5,13,60,6.60,'牙膏');
 
 SET FOREIGN_KEY_CHECKS=1;

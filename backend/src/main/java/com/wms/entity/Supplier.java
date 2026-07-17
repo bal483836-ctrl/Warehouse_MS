@@ -21,6 +21,9 @@ public class Supplier {
     private String email;
     @Column(name = "address")
     private String address;
+    /** 供应商图片/Logo（data URL 或相对路径） */
+    @Column(name = "image")
+    private String image;
     @Column(name = "remark")
     private String remark;
     @Column(name = "del_flag")

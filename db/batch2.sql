@@ -15,7 +15,7 @@ SET FOREIGN_KEY_CHECKS=0;
 -- 1. goods：存储分区 + 商品图片
 -- ------------------------------------------------------------
 ALTER TABLE `goods` ADD COLUMN `zone` varchar(10) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT '普通' COMMENT '存储分区:冷冻/冰鲜/普通';
-ALTER TABLE `goods` ADD COLUMN `image` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '商品图片(dataURL或路径)';
+ALTER TABLE `goods` ADD COLUMN `image` mediumtext CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci COMMENT '商品图片(dataURL或路径)';
 
 -- 分区归类：皮皮虾冷冻、葡萄/西红柿冰鲜，其余普通
 UPDATE `goods` SET `zone`='冷冻' WHERE id IN (7);
@@ -29,7 +29,7 @@ UPDATE `storage` SET `name`='生鲜仓库', `remark`='冷冻/冰鲜/普通三分
 -- 2. record：关联订单 + 收货凭证图片
 -- ------------------------------------------------------------
 ALTER TABLE `record` ADD COLUMN `order_id` int DEFAULT NULL COMMENT '关联订单id';
-ALTER TABLE `record` ADD COLUMN `image` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '入库收货凭证图片';
+ALTER TABLE `record` ADD COLUMN `image` mediumtext CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci COMMENT '入库收货凭证图片';
 
 -- ------------------------------------------------------------
 -- 3. orders 订单主表
