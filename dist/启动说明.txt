@@ -1,0 +1,26 @@
+========== 库智 WMS 可执行包 · 启动说明 ==========
+
+前置：本机需装好 JDK 17+ 和 MySQL 8（并已启动）。
+
+第一步：导入数据库（只需一次，用 root 执行）
+    mysql -uroot -p < ahut_base_full.sql
+  （或用 Navicat/Workbench 打开 ahut_base_full.sql 全部执行）
+  会自动建库 ahut_base、账号 wms/wms123456、导入全部表和演示数据。
+
+第二步：如需改数据库账号/密码/端口，编辑同目录的 application.yml。
+  （用 root 连数据库，就把 username/password 改成你的 root）
+
+第三步：启动
+  Windows：双击 启动.bat
+  Mac/Linux：  ./start.sh
+  或命令行：   java -jar warehouse-ms.jar
+
+第四步：浏览器打开 http://localhost:8080
+  登录：admin / admin123   或   test / 123456
+
+------------------------------------------------
+常见问题：
+- Access denied：数据库没导入或账号密码不对（改 application.yml）
+- Unknown database 'ahut_base'：重新执行第一步导入 SQL
+- 端口 8080 被占用：改 application.yml 里的 server.port
+- 今日出入库为 0：确认 application.yml 时区是 Asia/Shanghai
