@@ -321,7 +321,7 @@
     const ordNo = {}; orders.forEach(o => ordNo[o.id] = o.orderNo);
     let imgData = '';
     $('#ioImg').onchange = e => { const f = e.target.files[0]; if (!f) { imgData = ''; $('#ioImgPrev').innerHTML = ''; return; }
-      const rd = new FileReader(); rd.onload = () => { imgData = rd.result; $('#ioImgPrev').innerHTML = `<img src="${imgData}" style="margin-top:8px;max-height:88px;border-radius:8px;border:1px solid var(--border)">`; }; rd.readAsDataURL(f); };
+      readImageScaled(f, url => { imgData = url; $('#ioImgPrev').innerHTML = `<img src="${imgData}" style="margin-top:8px;max-height:88px;border-radius:8px;border:1px solid var(--border)">`; }); };
     const refreshStock = () => { $('#ioStock').innerHTML = refs.goodsList.map(g => `<tr><td>${g.name}</td><td>${zoneTag(g.zone)}</td><td class="muted">${refs.storage[g.storage] || '-'}</td><td class="qty tnum">${g.count}</td></tr>`).join(''); };
     const refreshRec = async () => { const rec = await get('/api/record'); const rows = (rec.data || []).sort((a, b) => b.id - a.id).slice(0, 10);
       $('#ioRec').innerHTML = rows.map(r => { const g = refs.goodsList.find(x => x.id === r.goods) || {}; const inb = r.type === 0;
@@ -466,6 +466,27 @@
       return `<img class="${cls || ''}" src="${esc(src)}"${onerr} alt="">`;
     }
     return `<div class="img-ph ${cls || ''}"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.5"/><circle cx="8.5" cy="9" r="1.6" fill="currentColor"/><path d="M4 17l5-4 4 3 3-2 4 3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div>`;
+  }
+  /* 上传图片：浏览器端等比缩放 + 压缩为 JPEG dataURL（默认最长边 900px），避免大图撑爆请求 */
+  function readImageScaled(file, cb, maxDim, quality) {
+    maxDim = maxDim || 900; quality = quality || 0.85;
+    if (!file.type || !file.type.startsWith('image/')) { showToast('请选择图片文件', true); return; }
+    const rd = new FileReader();
+    rd.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height; const scale = Math.min(1, maxDim / Math.max(w, h));
+        w = Math.round(w * scale); h = Math.round(h * scale);
+        try {
+          const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+          const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+          cb(cv.toDataURL('image/jpeg', quality));
+        } catch (e) { cb(rd.result); }
+      };
+      img.onerror = () => cb(rd.result);
+      img.src = rd.result;
+    };
+    rd.readAsDataURL(file);
   }
   function productCard(g, min, manage) {
     const low = min > 0 && (g.count == null ? 0 : g.count) < min;
@@ -713,7 +734,7 @@
     // 图片字段：本地文件 → dataURL，写入隐藏 data-f 输入
     bg.querySelectorAll('.img-file').forEach(fi => {
       const wrap = fi.closest('.imgfield'), hidden = wrap.querySelector('[data-f]'), prev = wrap.querySelector('.img-prev');
-      fi.onchange = e => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { hidden.value = rd.result; prev.innerHTML = `<img src="${rd.result}">`; }; rd.readAsDataURL(f); };
+      fi.onchange = e => { const f = e.target.files[0]; if (!f) return; readImageScaled(f, url => { hidden.value = url; prev.innerHTML = `<img src="${url}">`; }); };
     });
     bg.querySelector('#mc').onclick = () => bg.remove();
     bg.onclick = e => { if (e.target === bg) bg.remove(); };

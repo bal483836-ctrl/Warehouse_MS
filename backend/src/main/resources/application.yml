@@ -1,9 +1,17 @@
 server:
   port: 8080
+  tomcat:
+    # 放宽请求体上限，兜底图片(base64)上传（前端已先压缩，通常仅百KB级）
+    max-swallow-size: 20MB
+    max-http-form-post-size: 20MB
 
 spring:
   application:
     name: warehouse-ms
+  servlet:
+    multipart:
+      max-file-size: 12MB
+      max-request-size: 12MB
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/ahut_base?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
     username: wms
