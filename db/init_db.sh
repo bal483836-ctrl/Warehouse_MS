@@ -32,6 +32,9 @@ $MYSQL $DB < "$ROOT_DIR/db/batch2.sql"
 echo "==> 加载 Batch3：详情页配图 + 关系数据"
 $MYSQL $DB < "$ROOT_DIR/db/batch3.sql"
 
+echo "==> 加载 Batch3 配图：内置矢量图路径"
+$MYSQL $DB < "$ROOT_DIR/db/batch3_images.sql"
+
 echo "==> 重置演示口令（admin/admin123, test/123456）"
 $MYSQL $DB < "$ROOT_DIR/db/reseed_passwords.sql"
 
