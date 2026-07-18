@@ -171,6 +171,8 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .txt-crit{color:var(--crit)}
 .lk{color:var(--accent);font-weight:600}.lk:hover{text-decoration:underline}
 .hint-sm{font-size:11.5px;color:var(--muted);margin-top:4px}
+.oi-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.oi-chip.on{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
 .form-note{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:12.5px;color:var(--ink-2);margin-bottom:14px}
 
 /* breadcrumb */

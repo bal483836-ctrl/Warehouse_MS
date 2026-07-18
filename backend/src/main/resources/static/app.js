@@ -238,7 +238,7 @@
             <div class="field"><label>选择货物</label><select id="ioGoods"></select></div>
             <div class="field"><label>数量</label><input id="ioCount" type="number" min="1" value="10"></div>
             <div class="field"><label>落位库位（入库）</label><select id="ioLoc"></select><div class="hint-sm" id="ioLocHint"></div></div>
-            <div class="field"><label>关联订单（可选）</label><select id="ioOrder"><option value="">— 不关联 —</option>${orderOpt}</select></div>
+            <div class="field"><label>关联订单（可选）</label><select id="ioOrder"><option value="">— 不关联 —</option>${orderOpt}</select><div id="ioOrderItems"></div></div>
             <div class="field"><label>收货凭证图片（入库可选）</label><input id="ioImg" type="file" accept="image/*"><div id="ioImgPrev"></div></div>
             <div class="field"><label>备注</label><input id="ioRemark" placeholder="选填"></div>
             <div style="display:flex;gap:12px;margin-top:2px"><button class="btn btn-primary" id="btnIn" style="flex:1">入库</button><button class="btn" id="btnOut" style="flex:1">出库</button></div>
@@ -267,6 +267,25 @@
     const refreshRec = async () => { const rec = await get('/api/record'); const rows = (rec.data || []).sort((a, b) => b.id - a.id).slice(0, 10);
       $('#ioRec').innerHTML = rows.map(r => { const g = refs.goodsList.find(x => x.id === r.goods) || {}; const inb = r.type === 0;
         return `<tr><td>${esc(g.name || '#' + r.goods)}</td><td><span class="pill ${inb ? 'in' : 'out'}"><span class="d"></span>${inb ? '入库' : '出库'}</span></td><td class="qty ${inb ? 'pos' : 'neg'} tnum">${inb ? '+' : '-'}${r.count}</td><td class="muted">${r.locationId ? esc(locName[r.locationId] || '') : '-'}</td><td class="muted">${r.orderId ? esc(ordNo[r.orderId] || '#' + r.orderId) : '-'}</td><td class="muted tnum">${r.createtime || ''}</td></tr>`; }).join(''); };
+    /* 关联订单 → 自动填写商品/数量/备注；多商品订单显示可点击明细 */
+    const fillFromOrder = () => {
+      const box = $('#ioOrderItems');
+      const o = orders.find(x => x.id === +($('#ioOrder').value || 0));
+      if (!o || !(o.items || []).length) { box.innerHTML = ''; return; }
+      const dirHint = o.type === 1 ? '销售订单 · 建议出库' : '采购订单 · 建议入库';
+      box.innerHTML = `<div class="hint-sm" style="margin-top:6px">${dirHint} · 点击商品自动填写：</div>
+        <div class="oi-chips">${o.items.map((it, i) => { const g = refs.goodsList.find(x => x.id === it.goodsId) || {};
+          return `<button type="button" class="btn btn-sm oi-chip" data-i="${i}">${esc(g.name || ('#' + it.goodsId))} ×${it.count}</button>`; }).join('')}</div>`;
+      const apply = it => {
+        $('#ioGoods').value = String(it.goodsId); refreshLoc();
+        $('#ioCount').value = it.count;
+        $('#ioRemark').value = (o.type === 1 ? '销售出库' : '采购入库') + '（单号' + o.orderNo + '）';
+        box.querySelectorAll('.oi-chip').forEach(b => b.classList.toggle('on', o.items[+b.dataset.i] === it));
+      };
+      box.querySelectorAll('.oi-chip').forEach(b => b.onclick = () => apply(o.items[+b.dataset.i]));
+      apply(o.items[0]);   // 默认填第一条明细
+    };
+    $('#ioOrder').onchange = fillFromOrder;
     $('#ioGoods').onchange = refreshLoc; refreshLoc(); refreshStock(); await refreshRec();
     const move = async (dir) => {
       const goodsId = +$('#ioGoods').value, count = +$('#ioCount').value, remark = $('#ioRemark').value;
@@ -553,7 +572,15 @@
   /* ================= 货位管理（看板：内容 + 剩余容量） ================= */
   async function renderLocationBoard(view) {
     $('#pageTitle').textContent = '货位管理'; $('#pageSub').textContent = '每个库位的容量、已存商品与数量、剩余容量；按分区管理';
-    const res = await get('/api/location/board'); const rows = res.data || [];
+    const res = await get('/api/location/board');
+    if (res.code !== 200 || !Array.isArray(res.data)) {
+      view.innerHTML = `<section class="card"><h3 style="margin:0 0 10px">货位数据加载失败</h3>
+        <div class="muted" style="line-height:1.8">${esc(res.msg || res.message || res.error || '服务器错误')}<br>
+        若后台日志出现 <b>Unknown column</b>（如 ls.expiry_date），说明数据库结构是旧版本，请执行升级脚本（不会丢数据）：<br>
+        <code>mysql -uroot -p ahut_base &lt; db/repair_schema.sql</code>　然后重启后端刷新本页。</div></section>`;
+      return;
+    }
+    const rows = res.data || [];
     const zones = {}; rows.forEach(l => { const z = (l.zone || '未分区').trim(); (zones[z] = zones[z] || []).push(l); });
     const order = z => { const i = ZONES.indexOf(z); return i < 0 ? 99 : i; };
     view.innerHTML = `<section class="card">

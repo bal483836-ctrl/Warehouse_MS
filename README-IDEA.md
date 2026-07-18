@@ -53,6 +53,8 @@ mysql -uroot -p < db/ahut_base_full.sql
   `.../suppliers/<id>.jpg`（对照 `static/img/README.md`），缺图自动回退内置矢量图。
 
 ## 常见问题
+- **Unknown column（如 ls.expiry_date / g.zone / o.buyer）**：数据库结构是旧版本（缺增量列）。
+  执行升级脚本即可，**不会丢失已有数据**：`mysql -uroot -p ahut_base < db/repair_schema.sql`，然后重启后端。
 - **Unknown database 'ahut_base'**：第三步 SQL 没导入，重新执行。
 - **Access denied**：`application.yml` 的账号密码与数据库不一致。
 - **端口占用**：改 `application.yml` 的 `server.port`。
