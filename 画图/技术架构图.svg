@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="860" viewBox="0 0 1280 860" font-family="'Microsoft YaHei','PingFang SC','Segoe UI',sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f2039"/>
+      <stop offset="1" stop-color="#0a1628"/>
+    </linearGradient>
+    <linearGradient id="lay1" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#1e88e5"/><stop offset="1" stop-color="#1565c0"/>
+    </linearGradient>
+    <linearGradient id="lay2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#26a69a"/><stop offset="1" stop-color="#00897b"/>
+    </linearGradient>
+    <linearGradient id="lay3" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7e57c2"/><stop offset="1" stop-color="#5e35b1"/>
+    </linearGradient>
+    <linearGradient id="lay4" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ef6c00"/><stop offset="1" stop-color="#e65100"/>
+    </linearGradient>
+    <filter id="sh" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+    <style>
+      .lname{fill:#fff;font-size:22px;font-weight:700}
+      .lsub{fill:#e8f0fe;font-size:12px;opacity:.85}
+      .card{fill:#132b4a;stroke:#2c4a72;stroke-width:1}
+      .ctxt{fill:#dce6f5;font-size:14px;font-weight:600}
+      .csub{fill:#8fa8cc;font-size:11px}
+      .tag{fill:#1b3860;stroke:#33578a;stroke-width:1}
+      .ttxt{fill:#cfe0f7;font-size:12.5px}
+      .side{fill:#12233d;stroke:#294b73;stroke-width:1}
+      .stitle{fill:#7fd4ff;font-size:13px;font-weight:700}
+      .sitem{fill:#c3d4ec;font-size:11.5px}
+      .arrow{stroke:#5e7fae;stroke-width:2;marker-end:url(#ah)}
+      .flow{fill:#9fb6d6;font-size:11px}
+    </style>
+    <marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#5e7fae"/>
+    </marker>
+  </defs>
+
+  <rect width="1280" height="860" fill="url(#bg)"/>
+  <text x="40" y="52" fill="#fff" font-size="30" font-weight="800">仓库管理系统（库智 WMS）· 技术架构图</text>
+  <text x="40" y="80" fill="#6f8bb0" font-size="15">Spring Boot 3 + Spring Data JPA + MySQL 8 + 原生 SPA　|　RBAC 权限模型 · 分层架构</text>
+
+  <!-- ===== Layer 1: 表现层 ===== -->
+  <rect x="40" y="104" width="900" height="132" rx="12" fill="url(#lay1)" filter="url(#sh)"/>
+  <text x="64" y="140" class="lname">① 表现层 · 浏览器</text>
+  <text x="64" y="162" class="lsub">原生单页应用（SPA）· 无 Node 构建 · Spring Boot 静态托管</text>
+  <g>
+    <rect x="360" y="126" width="130" height="88" rx="8" class="card"/><text x="425" y="160" text-anchor="middle" class="ctxt">login.html</text><text x="425" y="180" text-anchor="middle" class="csub">登录页</text>
+    <rect x="500" y="126" width="130" height="88" rx="8" class="card"/><text x="565" y="160" text-anchor="middle" class="ctxt">index.html</text><text x="565" y="180" text-anchor="middle" class="csub">主框架</text>
+    <rect x="640" y="126" width="130" height="88" rx="8" class="card"/><text x="705" y="155" text-anchor="middle" class="ctxt">app.js</text><text x="705" y="175" text-anchor="middle" class="csub">路由/渲染/请求</text>
+    <rect x="780" y="126" width="130" height="88" rx="8" class="card"/><text x="845" y="155" text-anchor="middle" class="ctxt">SVG 图表</text><text x="845" y="175" text-anchor="middle" class="csub">手写可视化</text>
+  </g>
+
+  <!-- flow arrow 1->2 -->
+  <line x1="490" y1="236" x2="490" y2="268" class="arrow"/>
+  <text x="505" y="258" class="flow">HTTP / JSON（token 请求头）</text>
+
+  <!-- ===== Layer 2: 应用层 ===== -->
+  <rect x="40" y="268" width="900" height="300" rx="12" fill="url(#lay2)" filter="url(#sh)"/>
+  <text x="64" y="304" class="lname">② 应用层 · Spring Boot 3.3</text>
+  <text x="64" y="326" class="lsub">com.wms · 拦截器 → Controller → 业务事务 → Repository</text>
+
+  <!-- interceptors -->
+  <rect x="64" y="342" width="852" height="52" rx="8" fill="#0e3a35" stroke="#1c5f57"/>
+  <text x="80" y="363" class="stitle">拦截器 security</text>
+  <rect x="200" y="352" width="200" height="32" rx="6" class="tag"/><text x="300" y="373" text-anchor="middle" class="ttxt">AuthInterceptor · Token 鉴权</text>
+  <rect x="416" y="352" width="220" height="32" rx="6" class="tag"/><text x="526" y="373" text-anchor="middle" class="ttxt">AccessLogInterceptor · 操作日志</text>
+  <rect x="652" y="352" width="180" height="32" rx="6" class="tag"/><text x="742" y="373" text-anchor="middle" class="ttxt">TokenStore · 内存令牌</text>
+
+  <!-- controllers -->
+  <rect x="64" y="404" width="852" height="86" rx="8" fill="#0e3a35" stroke="#1c5f57"/>
+  <text x="80" y="425" class="stitle">Controller 层（30 个 REST 控制器）</text>
+  <g class="ttxt">
+    <rect x="80" y="434" width="118" height="26" rx="5" class="tag"/><text x="139" y="451" text-anchor="middle">AuthController</text>
+    <rect x="206" y="434" width="118" height="26" rx="5" class="tag"/><text x="265" y="451" text-anchor="middle">InOut 出入库</text>
+    <rect x="332" y="434" width="110" height="26" rx="5" class="tag"/><text x="387" y="451" text-anchor="middle">Order 订单</text>
+    <rect x="450" y="434" width="118" height="26" rx="5" class="tag"/><text x="509" y="451" text-anchor="middle">Goods/Batch</text>
+    <rect x="576" y="434" width="120" height="26" rx="5" class="tag"/><text x="636" y="451" text-anchor="middle">Location 货位</text>
+    <rect x="704" y="434" width="90" height="26" rx="5" class="tag"/><text x="749" y="451" text-anchor="middle">Stats</text>
+    <rect x="802" y="434" width="106" height="26" rx="5" class="tag"/><text x="855" y="451" text-anchor="middle">StockAlert</text>
+    <rect x="80" y="462" width="150" height="22" rx="5" fill="#0c322e"/><text x="155" y="478" text-anchor="middle" class="csub">Supplier / Customer</text>
+    <rect x="238" y="462" width="150" height="22" rx="5" fill="#0c322e"/><text x="313" y="478" text-anchor="middle" class="csub">StockCheck 盘点</text>
+    <rect x="396" y="462" width="150" height="22" rx="5" fill="#0c322e"/><text x="471" y="478" text-anchor="middle" class="csub">SysUser/Role/Menu</text>
+    <rect x="554" y="462" width="150" height="22" rx="5" fill="#0c322e"/><text x="629" y="478" text-anchor="middle" class="csub">SysLog / Notice</text>
+    <rect x="712" y="462" width="196" height="22" rx="5" fill="#0c322e"/><text x="810" y="478" text-anchor="middle" class="csub">common: Result · Md5Util</text>
+  </g>
+
+  <!-- repo -->
+  <rect x="64" y="500" width="852" height="52" rx="8" fill="#0e3a35" stroke="#1c5f57"/>
+  <text x="80" y="521" class="stitle">持久层 Spring Data JPA</text>
+  <rect x="240" y="510" width="300" height="32" rx="6" class="tag"/><text x="390" y="531" text-anchor="middle" class="ttxt">21 个 Repository（继承 JpaRepository）</text>
+  <rect x="556" y="510" width="290" height="32" rx="6" class="tag"/><text x="701" y="531" text-anchor="middle" class="ttxt">@Transactional 事务 · 派生查询</text>
+
+  <!-- flow arrow 2->3 -->
+  <line x1="490" y1="568" x2="490" y2="600" class="arrow"/>
+  <text x="505" y="590" class="flow">JDBC · Hibernate ORM</text>
+
+  <!-- ===== Layer 3: 数据层 ===== -->
+  <rect x="40" y="600" width="900" height="150" rx="12" fill="url(#lay4)" filter="url(#sh)"/>
+  <text x="64" y="636" class="lname">③ 数据层 · MySQL 8 / MariaDB（库：ahut_base）</text>
+  <g>
+    <rect x="64" y="652" width="270" height="82" rx="8" class="card"/>
+    <text x="80" y="674" class="stitle">业务表</text>
+    <text x="80" y="696" class="sitem">goods · goodstype · storage · location</text>
+    <text x="80" y="714" class="sitem">location_stock（批次）· record · order_main/item</text>
+    <text x="80" y="730" class="sitem">supplier · customer · stock_check · stock_alert</text>
+
+    <rect x="348" y="652" width="270" height="82" rx="8" class="card"/>
+    <text x="364" y="674" class="stitle">权限表（RBAC）</text>
+    <text x="364" y="696" class="sitem">sys_user · sys_role · sys_menu</text>
+    <text x="364" y="714" class="sitem">sys_user_role · sys_role_res</text>
+    <text x="364" y="730" class="sitem">sys_log · sys_notice</text>
+
+    <rect x="632" y="652" width="284" height="82" rx="8" class="card"/>
+    <text x="648" y="674" class="stitle">数据特性</text>
+    <text x="648" y="696" class="sitem">· 批次化库存 + 到期日（保质期）</text>
+    <text x="648" y="714" class="sitem">· 密码盐值散列 md5(md5(pwd)+salt)</text>
+    <text x="648" y="730" class="sitem">· 出入库流水可审计</text>
+  </g>
+
+  <!-- ===== Right side: cross-cutting ===== -->
+  <rect x="964" y="104" width="276" height="646" rx="12" fill="url(#lay3)" filter="url(#sh)"/>
+  <text x="988" y="140" class="lname" font-size="19">横切能力</text>
+
+  <rect x="984" y="158" width="236" height="112" rx="8" class="side"/>
+  <text x="1000" y="182" class="stitle">🔐 安全与鉴权</text>
+  <text x="1000" y="204" class="sitem">· 账号 + 盐值散列登录</text>
+  <text x="1000" y="224" class="sitem">· 内存 Token（无状态请求头）</text>
+  <text x="1000" y="244" class="sitem">· RBAC：用户-角色-资源</text>
+  <text x="1000" y="264" class="sitem">· 拦截器统一鉴权/放行</text>
+
+  <rect x="984" y="282" width="236" height="132" rx="8" class="side"/>
+  <text x="1000" y="306" class="stitle">📦 核心业务逻辑</text>
+  <text x="1000" y="328" class="sitem">· 出入库全程 @Transactional</text>
+  <text x="1000" y="348" class="sitem">· 入库分区落位校验</text>
+  <text x="1000" y="368" class="sitem">· 批次入库 + 到期日记录</text>
+  <text x="1000" y="388" class="sitem">· 出库 FEFO 先到期先出</text>
+  <text x="1000" y="408" class="sitem">· 库存不足自动拦截</text>
+
+  <rect x="984" y="426" width="236" height="112" rx="8" class="side"/>
+  <text x="1000" y="450" class="stitle">📊 数据分析</text>
+  <text x="1000" y="472" class="sitem">· KPI 实时聚合</text>
+  <text x="1000" y="492" class="sitem">· 出入库趋势 / 分类占比</text>
+  <text x="1000" y="512" class="sitem">· 库位热力图（占用率）</text>
+  <text x="1000" y="530" class="sitem">· 补货 / 临期清理预警</text>
+
+  <rect x="984" y="550" width="236" height="90" rx="8" class="side"/>
+  <text x="1000" y="574" class="stitle">🧰 统一支撑</text>
+  <text x="1000" y="596" class="sitem">· Result 统一返回体</text>
+  <text x="1000" y="616" class="sitem">· 操作日志自动落库</text>
+  <text x="1000" y="634" class="sitem">· 全局异常 / CORS 配置</text>
+
+  <rect x="984" y="652" width="236" height="82" rx="8" class="side"/>
+  <text x="1000" y="676" class="stitle">🚀 部署运行</text>
+  <text x="1000" y="698" class="sitem">· 单一可执行 Jar（内嵌 Tomcat）</text>
+  <text x="1000" y="716" class="sitem">· 前后端一体，端口 8080</text>
+  <text x="1000" y="732" class="sitem">· 集成测试 test.sh（18 项）</text>
+
+  <text x="40" y="800" fill="#5b769c" font-size="12">登录：admin / admin123　·　test / 123456　|　JDK 17 · Spring Boot 3.3.5 · 分层解耦 · 逻辑真实数据驱动</text>
+</svg>
