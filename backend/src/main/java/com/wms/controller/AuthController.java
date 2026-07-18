@@ -18,10 +18,19 @@ public class AuthController {
 
     private final SysUserRepo userRepo;
     private final TokenStore tokenStore;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
-    public AuthController(SysUserRepo userRepo, TokenStore tokenStore) {
+    public AuthController(SysUserRepo userRepo, TokenStore tokenStore, org.springframework.jdbc.core.JdbcTemplate jdbc) {
         this.userRepo = userRepo;
         this.tokenStore = tokenStore;
+        this.jdbc = jdbc;
+    }
+
+    /** 角色：含 role_id=1 视为超级管理员 admin，否则操作员 operator */
+    private String roleOf(Integer userId) {
+        Integer c = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM sys_user_role WHERE user_id=? AND role_id=1", Integer.class, userId);
+        return (c != null && c > 0) ? "admin" : "operator";
     }
 
     public record LoginReq(String number, String password) {}
@@ -87,6 +96,7 @@ public class AuthController {
         m.put("age", u.getAge());
         m.put("sex", u.getSex());
         m.put("phone", u.getPhone());
+        m.put("role", roleOf(u.getId()));
         return m;
     }
 }

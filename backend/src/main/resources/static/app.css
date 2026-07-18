@@ -173,6 +173,27 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .hint-sm{font-size:11.5px;color:var(--muted);margin-top:4px}
 .oi-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .oi-chip.on{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.kpis-6{grid-template-columns:repeat(6,1fr)}
+.kpi-link{cursor:pointer;transition:transform .12s,box-shadow .12s}
+.kpi-link:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.kpi-go{position:absolute;right:14px;bottom:12px;font-size:11.5px;color:var(--accent);font-weight:600;opacity:0;transition:opacity .12s}
+.kpi-link:hover .kpi-go{opacity:1}
+.ic.crit{background:var(--crit-wash);color:var(--crit)}
+.cap-row{display:grid;grid-template-columns:96px 1fr 140px;align-items:center;gap:12px;padding:8px 4px;border-radius:8px}
+.cap-row:hover{background:var(--surface-2)}
+.cap-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cap-bar{height:12px;border-radius:6px;background:var(--surface-2);overflow:hidden}
+.cap-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#7fca8b,#2f9d54)}
+.cap-fill.full{background:linear-gradient(90deg,#f0a24a,#dc2626)}
+.cap-num{font-size:12.5px;text-align:right}
+.io-tabs{display:inline-flex;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px;margin-bottom:4px}
+.io-tabs button{border:none;background:none;padding:7px 20px;border-radius:8px;font-size:14px;font-weight:600;color:var(--ink-2)}
+.io-tabs button.on{background:var(--surface);color:var(--accent);box-shadow:var(--shadow)}
+.io-goods-row{display:flex;gap:8px;align-items:center}
+.io-goods-row select{flex:1}
+.io-goods-row .btn{flex:0 0 auto;white-space:nowrap}
+@media (max-width:1100px){.kpis-6{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:560px){.kpis-6{grid-template-columns:repeat(2,1fr)}.cap-row{grid-template-columns:70px 1fr 96px}}
 .form-note{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:12.5px;color:var(--ink-2);margin-bottom:14px}
 
 /* breadcrumb */

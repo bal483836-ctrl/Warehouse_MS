@@ -38,6 +38,9 @@ $MYSQL $DB < "$ROOT_DIR/db/batch3_images.sql"
 echo "==> 加载 Batch4：保质期/清理预警 + 销售订单买家/取消 + 货位记录"
 $MYSQL $DB < "$ROOT_DIR/db/batch4.sql"
 
+echo "==> 加载 Batch5：分类关联仓库 + 商品容量占比 + 双角色"
+$MYSQL $DB < "$ROOT_DIR/db/batch5.sql"
+
 echo "==> 重置演示口令（admin/admin123, test/123456）"
 $MYSQL $DB < "$ROOT_DIR/db/reseed_passwords.sql"
 

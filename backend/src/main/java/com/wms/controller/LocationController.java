@@ -26,24 +26,26 @@ public class LocationController extends BaseController<Location> {
             "FROM location l LEFT JOIN storage s ON s.id=l.storage_id ORDER BY s.name, l.zone, l.row_no");
         // 每个库位存了什么（商品名 + 数量 + 到期日）
         Map<Integer, List<Map<String, Object>>> items = new HashMap<>();
-        Map<Integer, Long> used = new HashMap<>();
+        Map<Integer, Double> usedUnits = new HashMap<>();   // 折算后的容量占用
         for (Map<String, Object> r : jdbc.queryForList(
-                "SELECT ls.location_id lid, g.name gname, SUM(ls.count) qty, MIN(ls.expiry_date) expiry " +
+                "SELECT ls.location_id lid, g.name gname, SUM(ls.count) qty, MIN(ls.expiry_date) expiry, " +
+                " SUM(ls.count/GREATEST(COALESCE(g.pieces_per_cap,1),1)) units " +
                 "FROM location_stock ls JOIN goods g ON g.id=ls.goods_id " +
                 "GROUP BY ls.location_id, g.name")) {
             int lid = ((Number) r.get("lid")).intValue();
             long qty = ((Number) r.get("qty")).longValue();
+            double units = r.get("units") == null ? 0 : ((Number) r.get("units")).doubleValue();
             Map<String, Object> it = new LinkedHashMap<>();
             it.put("name", r.get("gname"));
             it.put("qty", qty);
             it.put("expiry", r.get("expiry"));
             items.computeIfAbsent(lid, k -> new ArrayList<>()).add(it);
-            used.merge(lid, qty, Long::sum);
+            usedUnits.merge(lid, units, Double::sum);
         }
         for (Map<String, Object> l : locs) {
             int id = ((Number) l.get("id")).intValue();
             long cap = l.get("capacity") == null ? 0 : ((Number) l.get("capacity")).longValue();
-            long u = used.getOrDefault(id, 0L);
+            long u = Math.round(usedUnits.getOrDefault(id, 0.0));
             l.put("items", items.getOrDefault(id, List.of()));
             l.put("used", u);
             l.put("remain", Math.max(0, cap - u));

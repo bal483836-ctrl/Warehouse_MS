@@ -22,7 +22,20 @@ public class ProfileController {
     public Result<Map<String, Object>> goods(@PathVariable Integer id) {
         List<Map<String, Object>> gs = jdbc.queryForList("SELECT * FROM goods WHERE id=?", id);
         if (gs.isEmpty()) return Result.fail(404, "商品不存在");
-        Map<String, Object> g = new LinkedHashMap<>(gs.get(0));
+        Map<String, Object> src = gs.get(0);
+        // 原生 SQL 返回 snake_case 列，转成前端使用的 camelCase 键
+        Map<String, Object> g = new LinkedHashMap<>();
+        g.put("id", src.get("id"));
+        g.put("name", src.get("name"));
+        g.put("storage", src.get("storage"));
+        g.put("goodsType", src.get("goodsType"));
+        g.put("count", src.get("count"));
+        g.put("zone", src.get("zone"));
+        g.put("image", src.get("image"));
+        g.put("shelfLifeDays", src.get("shelf_life_days"));
+        g.put("cleanupWarnDays", src.get("cleanup_warn_days"));
+        g.put("piecesPerCap", src.get("pieces_per_cap"));
+        g.put("remark", src.get("remark"));
         Integer minCount = jdbc.queryForObject(
             "SELECT COALESCE(MAX(CASE WHEN enabled=1 THEN min_count END),0) FROM stock_alert WHERE goods_id=?",
             Integer.class, id);
@@ -41,15 +54,15 @@ public class ProfileController {
                                                @RequestParam(defaultValue = "month") String period) {
         String keyExpr, labelExpr; int limit;
         switch (period) {
+            case "day":
+                keyExpr = "DATE(createtime)";
+                labelExpr = "DATE_FORMAT(MIN(createtime),'%m/%d')"; limit = 14; break;
             case "week":
                 keyExpr = "YEARWEEK(createtime,3)";
                 labelExpr = "DATE_FORMAT(MIN(createtime),'%m/%d')"; limit = 8; break;
             case "quarter":
                 keyExpr = "CONCAT(YEAR(createtime),QUARTER(createtime))";
                 labelExpr = "CONCAT(YEAR(MIN(createtime)),'Q',QUARTER(MIN(createtime)))"; limit = 8; break;
-            case "year":
-                keyExpr = "YEAR(createtime)";
-                labelExpr = "DATE_FORMAT(MIN(createtime),'%Y')"; limit = 5; break;
             default:
                 period = "month";
                 keyExpr = "DATE_FORMAT(createtime,'%Y%m')";

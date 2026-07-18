@@ -77,7 +77,13 @@ CALL add_col('location', 'row_no',   'ALTER TABLE `location` ADD COLUMN `row_no`
 CALL add_col('location', 'col_no',   'ALTER TABLE `location` ADD COLUMN `col_no` int DEFAULT NULL COMMENT ''列''');
 CALL add_col('location', 'capacity', 'ALTER TABLE `location` ADD COLUMN `capacity` int DEFAULT 500 COMMENT ''库位容量''');
 
+-- ---------- Batch5：分类关联仓库 + 商品容量占比 ----------
+CALL add_col('goodstype', 'storage_id',   'ALTER TABLE `goodstype` ADD COLUMN `storage_id` int DEFAULT NULL COMMENT ''该分类默认仓库''');
+CALL add_col('goods',     'pieces_per_cap','ALTER TABLE `goods` ADD COLUMN `pieces_per_cap` int DEFAULT 1 COMMENT ''多少件占1库位容量''');
+
 DROP PROCEDURE IF EXISTS add_col;
+UPDATE `goods` SET `pieces_per_cap`=1 WHERE `pieces_per_cap` IS NULL;
+UPDATE `sys_role` SET `name`='操作员', `description`='仅可操作销售订单、出入库、个人资料' WHERE id=3 AND name<>'操作员';
 
 -- ---------- 温和回填（只补空值，不覆盖已有数据） ----------
 UPDATE `goods` SET `zone`='普通' WHERE `zone` IS NULL OR `zone`='';

@@ -26,9 +26,18 @@ public class InOutController {
     private final RecordRepo recordRepo;
     private final LocationStockRepo locStockRepo;
     private final LocationRepo locationRepo;
+    private final com.wms.repo.OrderRepo orderRepo;
 
-    public InOutController(GoodsRepo g, RecordRepo r, LocationStockRepo ls, LocationRepo l) {
-        this.goodsRepo = g; this.recordRepo = r; this.locStockRepo = ls; this.locationRepo = l;
+    public InOutController(GoodsRepo g, RecordRepo r, LocationStockRepo ls, LocationRepo l, com.wms.repo.OrderRepo o) {
+        this.goodsRepo = g; this.recordRepo = r; this.locStockRepo = ls; this.locationRepo = l; this.orderRepo = o;
+    }
+
+    /** 完成后把关联订单置为「已完成」，使其从待入库/待出库列表消失 */
+    private void completeOrder(Integer orderId) {
+        if (orderId == null) return;
+        orderRepo.findById(orderId).ifPresent(o -> {
+            if (o.getStatus() == null || o.getStatus() == 0) { o.setStatus(1); orderRepo.save(o); }
+        });
     }
 
     public record MoveReq(Integer goodsId, Integer count, String remark,
@@ -39,6 +48,7 @@ public class InOutController {
     public Result<Record> inbound(@RequestBody MoveReq req, HttpServletRequest http) {
         if (req.goodsId() == null || req.count() == null || req.count() <= 0)
             return Result.fail("请选择货物并填写正数数量");
+        if (req.orderId() == null) return Result.fail("入库必须关联采购订单");
         Goods g = goodsRepo.findById(req.goodsId()).orElse(null);
         if (g == null) return Result.fail("货物不存在");
 
@@ -49,7 +59,9 @@ public class InOutController {
         g.setCount((g.getCount() == null ? 0 : g.getCount()) + req.count());
         goodsRepo.save(g);
         allocate(g, loc, req.count());
-        return Result.ok(writeRecord(g.getId(), req.count(), 0, req.remark(), req.orderId(), loc.getId(), req.image(), http));
+        Record rec = writeRecord(g.getId(), req.count(), 0, req.remark(), req.orderId(), loc.getId(), req.image(), http);
+        completeOrder(req.orderId());
+        return Result.ok(rec);
     }
 
     @PostMapping("/out")
@@ -57,6 +69,7 @@ public class InOutController {
     public Result<Record> outbound(@RequestBody MoveReq req, HttpServletRequest http) {
         if (req.goodsId() == null || req.count() == null || req.count() <= 0)
             return Result.fail("请选择货物并填写正数数量");
+        if (req.orderId() == null) return Result.fail("出库必须关联销售订单");
         Goods g = goodsRepo.findById(req.goodsId()).orElse(null);
         if (g == null) return Result.fail("货物不存在");
         int cur = g.getCount() == null ? 0 : g.getCount();
@@ -65,7 +78,9 @@ public class InOutController {
         g.setCount(cur - req.count());
         goodsRepo.save(g);
         deallocate(g, req.count());
-        return Result.ok(writeRecord(g.getId(), req.count(), 1, req.remark(), req.orderId(), null, null, http));
+        Record rec = writeRecord(g.getId(), req.count(), 1, req.remark(), req.orderId(), null, null, http);
+        completeOrder(req.orderId());
+        return Result.ok(rec);
     }
 
     private String zoneOf(Goods g) {

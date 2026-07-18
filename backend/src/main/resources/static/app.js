@@ -28,7 +28,7 @@
   /* ---------- 配置 ---------- */
   const ZONES = ['冷冻', '冰鲜', '普通'];
   const ORDER_STATUS = ['待处理', '已完成', '已取消'];
-  const PERIODS = [['week', '周'], ['month', '月'], ['quarter', '季'], ['year', '年']];
+  const PERIODS = [['day', '天'], ['week', '周'], ['month', '月'], ['quarter', '季']];
   const statusPill = s => { const c = ['#e0920a', '#0ca30c', '#8a99b5'][s] || '#8a99b5'; return `<span class="pill" style="color:${c};background:color-mix(in srgb,${c} 14%,transparent)"><span class="d"></span>${ORDER_STATUS[s] || '—'}</span>`; };
   function zoneTag(z) { z = z || '普通'; const c = { 冷冻: '#2a78d6', 冰鲜: '#1baf7a', 普通: '#8a99b5' }[z] || '#8a99b5'; return `<span class="pill" style="color:${c};background:color-mix(in srgb,${c} 14%,transparent)"><span class="d"></span>${z}</span>`; }
 
@@ -55,7 +55,7 @@
   ];
   const LABELS = { id: 'ID', name: '名称', remark: '备注', count: '数量', storage: '仓库', goodsType: '分类', goods: '货品', zone: '分区',
     userId: '操作人', createtime: '时间', createTime: '时间', minCount: '安全下限', maxCount: '库存上限', enabled: '状态',
-    goodsId: '商品', code: '库位编码', capacity: '容量', title: '标题', content: '操作内容',
+    goodsId: '商品', storageId: '所属仓库', code: '库位编码', capacity: '容量', title: '标题', content: '操作内容',
     ipAddr: 'IP地址', methods: '接口', result: '结果', duration: '耗时(ms)' };
   const lab = k => LABELS[k] || k;
 
@@ -69,10 +69,23 @@
   }
   const map = (arr, k, v) => (arr || []).reduce((o, x) => (o[x[k]] = x[v], o), {});
 
+  /* ---------- 角色权限 ---------- */
+  const isAdmin = () => (USER.role || 'admin') !== 'operator';
+  // 操作员仅可见：出入库操作、销售订单、个人资料
+  const OP_ROUTES = ['inout', 'orders/1', 'profile'];
+  const opAllowed = h => OP_ROUTES.includes(h) || h.startsWith('goods/') || h.startsWith('order/');
+  // 就地表单/删除保存后返回：hash 未变时直接重渲染，避免卡在原界面
+  const goTo = h => { if ((location.hash.slice(2) || 'dashboard') === h) route(); else location.hash = '#/' + h; };
+
   /* ---------- 导航 / 顶栏 ---------- */
   function buildNav() {
-    $('#nav').innerHTML = NAV.map(g => `<div class="nav-group">${g.group}</div>` +
-      g.items.map(([route, label, icon]) => `<a href="#/${route}" data-route="${route}"><svg viewBox="0 0 24 24" fill="none"><path d="${icon}" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>${label}</a>`).join('')).join('');
+    const admin = isAdmin();
+    $('#nav').innerHTML = NAV.map(g => {
+      const items = g.items.filter(([route]) => admin || OP_ROUTES.includes(route));
+      if (!items.length) return '';
+      return `<div class="nav-group">${g.group}</div>` +
+        items.map(([route, label, icon]) => `<a href="#/${route}" data-route="${route}"><svg viewBox="0 0 24 24" fill="none"><path d="${icon}" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>${label}</a>`).join('');
+    }).join('');
     $('#uname').textContent = USER.name || '用户';
     $('#unum').textContent = (USER.number || '') + ' · 在线';
     $('#avatar').textContent = (USER.name || 'U').charAt(0);
@@ -110,7 +123,9 @@
 
   /* ---------- 路由 ---------- */
   async function route() {
-    const hash = location.hash.slice(2) || 'dashboard';
+    let hash = location.hash.slice(2) || 'dashboard';
+    // 操作员越权访问 → 重定向到出入库操作
+    if (!isAdmin() && !opAllowed(hash)) { location.hash = '#/inout'; return; }
     const view = $('#view');
     view.innerHTML = '<div class="loading"><div class="spin"></div></div>';
     try {
@@ -134,21 +149,21 @@
   async function renderDashboard(view) {
     $('#pageTitle').textContent = '运营总览';
     $('#pageSub').textContent = `${greet()}，${USER.name || ''} · 实时库存与出入库概览`;
-    const [kpi, cat, trend] = await Promise.all([get('/api/stats/kpi'), get('/api/stats/category'), get('/api/stats/trend')]);
+    const [kpi, cat, capRes] = await Promise.all([get('/api/stats/kpi'), get('/api/stats/category'), get('/api/stats/capacity')]);
     const k = kpi.data;
     view.innerHTML = `
-      <section class="kpis">
-        ${kpiTile('blue', '总库存量', fmt(k.totalStock), '件', 'M3 7l9-4 9 4-9 4-9-4Zm0 5 9 4 9-4M3 17l9 4 9-4')}
-        ${kpiTile('green', '今日入库', fmt(k.todayIn), '件', 'M12 20V6m0 0-6 6m6-6 6 6')}
-        ${kpiTile('amber', '今日出库', fmt(k.todayOut), '件', 'M12 4v14m0 0 6-6m-6 6-6-6')}
-        ${kpiTile('red', '库存预警', k.alertCount, '项', 'M12 3 2 20h20L12 3Zm0 7v4m0 3h.01')}
-        ${kpiTile('slate', '仓位使用率', k.usage, '%', 'M4 21V8l8-5 8 5v13M9 21v-6h6v6')}
+      <section class="kpis kpis-6">
+        ${kpiTile('blue', '总库存量', fmt(k.totalStock), '件', 'M3 7l9-4 9 4-9 4-9-4Zm0 5 9 4 9-4M3 17l9 4 9-4', 't/goods')}
+        ${kpiTile('red', '库存预警', k.alertCount, '项', 'M12 3 2 20h20L12 3Zm0 7v4m0 3h.01', 'alerts')}
+        ${kpiTile('crit', '过保质期', k.expired == null ? 0 : k.expired, '项', 'M12 8v5m0 3h.01M12 3 2 20h20L12 3Z', 'alerts')}
+        ${kpiTile('amber', '临期预警', k.expiring == null ? 0 : k.expiring, '项', 'M12 8v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z', 'alerts')}
+        ${kpiTile('green', '待入库', k.pendingIn == null ? 0 : k.pendingIn, '单', 'M12 20V6m0 0-6 6m6-6 6 6', 'orders/0')}
+        ${kpiTile('slate', '待出库', k.pendingOut == null ? 0 : k.pendingOut, '单', 'M12 4v14m0 0 6-6m-6 6-6-6', 'orders/1')}
       </section>
       <section class="grid-2">
         <div class="card">
-          <div class="card-h"><div><h3>出入库趋势</h3><div class="desc">按月统计入库 / 出库总量（件）</div></div></div>
-          <div class="legend" style="margin:10px 0 2px"><div class="it"><span class="sw" style="background:var(--s-in)"></span>入库</div><div class="it"><span class="sw" style="background:var(--s-out)"></span>出库</div></div>
-          <div id="trend"></div>
+          <div class="card-h"><div><h3>库存容量图</h3><div class="desc">各仓库已用容量 / 总容量（按商品容量占比折算）· 点击进入货位管理</div></div><div class="right"><span class="pill" style="color:var(--ink-2);background:var(--surface-2)">总使用率 ${k.usage}%</span></div></div>
+          <div id="capChart" style="margin-top:10px"></div>
         </div>
         <div class="card">
           <div class="card-h"><div><h3>库存分类占比</h3><div class="desc">总库存 ${fmt(k.totalStock)} 件</div></div></div>
@@ -159,7 +174,7 @@
         <div class="card-h"><div><h3>近期出入库记录</h3></div><div class="right"><a class="btn btn-sm" href="#/inout">去操作</a></div></div>
         <div class="tablewrap" style="margin-top:6px"><table><thead><tr><th>货物</th><th>分区</th><th>类型</th><th>数量</th><th>操作人</th><th>时间</th></tr></thead><tbody id="recRows"></tbody></table></div>
       </section>`;
-    drawTrend(trend.data); drawDonut(cat.data);
+    drawCapacity($('#capChart'), capRes.data || []); drawDonut(cat.data);
     const rec = await get('/api/record');
     const rows = (rec.data || []).sort((a, b) => b.id - a.id).slice(0, 8);
     $('#recRows').innerHTML = rows.map(r => { const g = refs.goodsList.find(x => x.id === r.goods) || {}; const inb = r.type === 0;
@@ -167,7 +182,24 @@
   }
   refsUserNameInit();
   function refsUserNameInit() { refs.userName = id => id == null ? '-' : (id === USER.id ? USER.name : ('#' + id)); }
-  function kpiTile(ic, lbl, val, unit, icon) { return `<div class="kpi"><div class="top"><div class="ic ${ic}"><svg viewBox="0 0 24 24" fill="none"><path d="${icon}" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="lbl">${lbl}</div></div><div class="val tnum">${val}<small>${unit}</small></div></div>`; }
+  function kpiTile(ic, lbl, val, unit, icon, route) {
+    const inner = `<div class="top"><div class="ic ${ic}"><svg viewBox="0 0 24 24" fill="none"><path d="${icon}" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="lbl">${lbl}</div></div><div class="val tnum">${val}<small>${unit}</small></div>`;
+    return route ? `<a class="kpi kpi-link" href="#/${route}">${inner}<span class="kpi-go">查看 ›</span></a>` : `<div class="kpi">${inner}</div>`;
+  }
+  /* 库存容量图：各仓库已用/总容量水平条 */
+  function drawCapacity(host, list) {
+    if (!host) return;
+    if (!list.length) { host.innerHTML = '<div class="muted" style="padding:36px 0;text-align:center">暂无仓库容量数据</div>'; return; }
+    host.innerHTML = list.map(w => {
+      const cap = Number(w.capacity) || 0, used = Math.round(Number(w.used) || 0), pct = cap > 0 ? Math.min(100, Math.round(used * 100 / cap)) : 0;
+      const full = pct >= 90;
+      return `<a class="cap-row" href="#/t/location">
+        <div class="cap-name">${esc(w.name)}</div>
+        <div class="cap-bar"><div class="cap-fill ${full ? 'full' : ''}" style="width:${pct}%"></div></div>
+        <div class="cap-num tnum">${fmt(used)}/${fmt(cap)}<span class="muted"> · ${pct}%</span></div>
+      </a>`;
+    }).join('');
+  }
 
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   function smooth(pts) { if (pts.length === 0) return 'M0 0'; if (pts.length === 1) return 'M' + pts[0][0] + ' ' + pts[0][1]; let d = 'M' + pts[0][0] + ' ' + pts[0][1];
@@ -224,24 +256,34 @@
     view.querySelectorAll('[data-g]').forEach(el => el.onclick = () => location.hash = '#/goods/' + el.dataset.g);
   }
 
-  /* ================= 出入库操作 ================= */
-  async function renderInout(view) {
+  /* ================= 出入库操作（入库/出库分开，必须关联订单） ================= */
+  async function renderInout(view, dir) {
+    dir = dir || 'in';
     $('#pageTitle').textContent = '出入库操作';
-    $('#pageSub').textContent = '入库需选落位库位（分区须匹配），可关联订单、上传收货凭证；出库按先到期先出';
+    $('#pageSub').textContent = '入库关联采购订单、出库关联销售订单；选择订单后自动带出商品与数量；已完成订单不再显示';
     const [ordRes, locRes] = await Promise.all([get('/api/orders'), get('/api/location')]);
-    const orders = ordRes.data || [], locations = locRes.data || [];
-    const orderOpt = orders.map(o => `<option value="${o.id}">${o.type === 1 ? '销' : '采'}｜${esc(o.orderNo)}</option>`).join('');
+    const locations = locRes.data || [];
+    const allOrders = ordRes.data || [];
+    // 待处理订单：入库=未完成采购单，出库=未完成销售单
+    const orders = allOrders.filter(o => (dir === 'in' ? o.type === 0 : o.type === 1) && o.status !== 1 && o.status !== 2);
+    const locName = {}; locations.forEach(l => locName[l.id] = l.code);
+    const ordNo = {}; allOrders.forEach(o => ordNo[o.id] = o.orderNo);
+    const isIn = dir === 'in';
+    const orderOpt = orders.map(o => `<option value="${o.id}">${esc(o.orderNo)}（${esc(isIn ? (refs.supplier[o.supplierId] || '供应商') : (o.buyer || '买家'))}）</option>`).join('');
     view.innerHTML = `
+      <div class="io-tabs"><button data-d="in" class="${isIn ? 'on' : ''}">入库（采购）</button><button data-d="out" class="${isIn ? '' : 'on'}">出库（销售）</button></div>
       <section class="grid-2">
-        <div class="card"><div class="card-h"><h3>登记单据</h3></div>
+        <div class="card"><div class="card-h"><h3>${isIn ? '采购入库登记' : '销售出库登记'}</h3></div>
           <div style="display:flex;flex-direction:column;gap:13px;margin-top:12px">
-            <div class="field"><label>选择货物</label><select id="ioGoods"></select></div>
-            <div class="field"><label>数量</label><input id="ioCount" type="number" min="1" value="10"></div>
-            <div class="field"><label>落位库位（入库）</label><select id="ioLoc"></select><div class="hint-sm" id="ioLocHint"></div></div>
-            <div class="field"><label>关联订单（可选）</label><select id="ioOrder"><option value="">— 不关联 —</option>${orderOpt}</select><div id="ioOrderItems"></div></div>
-            <div class="field"><label>收货凭证图片（入库可选）</label><input id="ioImg" type="file" accept="image/*"><div id="ioImgPrev"></div></div>
+            <div class="field"><label>关联${isIn ? '采购' : '销售'}订单（必选）</label>
+              <select id="ioOrder"><option value="">${orders.length ? '— 请选择订单 —' : '（暂无待' + (isIn ? '入库' : '出库') + '订单）'}</option>${orderOpt}</select>
+              <div id="ioOrderItems"></div></div>
+            <div class="field"><label>商品</label><div class="io-goods-row"><select id="ioGoods" disabled></select><a class="btn btn-sm" id="ioGoodsView">查看详情</a></div></div>
+            <div class="field"><label>数量</label><input id="ioCount" type="number" min="1" value="1"></div>
+            ${isIn ? `<div class="field"><label>落位库位（分区须匹配）</label><select id="ioLoc"></select><div class="hint-sm" id="ioLocHint"></div></div>
+            <div class="field"><label>收货凭证图片（可选）</label><input id="ioImg" type="file" accept="image/*"><div id="ioImgPrev"></div></div>` : ''}
             <div class="field"><label>备注</label><input id="ioRemark" placeholder="选填"></div>
-            <div style="display:flex;gap:12px;margin-top:2px"><button class="btn btn-primary" id="btnIn" style="flex:1">入库</button><button class="btn" id="btnOut" style="flex:1">出库</button></div>
+            <button class="btn btn-primary" id="btnGo">${isIn ? '确认入库' : '确认出库'}</button>
           </div>
         </div>
         <div class="card"><div class="card-h"><h3>当前库存</h3></div>
@@ -251,53 +293,54 @@
       <section class="card"><div class="card-h"><h3>最新流水</h3></div>
         <div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>货物</th><th>类型</th><th>数量</th><th>落位</th><th>关联订单</th><th>时间</th></tr></thead><tbody id="ioRec"></tbody></table></div>
       </section>`;
-    $('#ioGoods').innerHTML = refs.goodsList.map(g => `<option value="${g.id}">${esc(g.name)}（${g.zone || '普通'}）</option>`).join('');
-    const locName = {}; locations.forEach(l => locName[l.id] = l.code);
-    const ordNo = {}; orders.forEach(o => ordNo[o.id] = o.orderNo);
+    view.querySelectorAll('.io-tabs button').forEach(b => b.onclick = () => renderInout(view, b.dataset.d));
+    const goodsOf = id => refs.goodsList.find(x => x.id === id) || {};
     const refreshLoc = () => {
-      const g = refs.goodsList.find(x => x.id === +$('#ioGoods').value) || {};
-      const zone = g.zone || '普通';
+      if (!isIn) return;
+      const g = goodsOf(+$('#ioGoods').value); const zone = g.zone || '普通';
       const opts = locations.filter(l => l.storageId === g.storage && (l.zone || '').trim() === zone);
       $('#ioLoc').innerHTML = opts.length ? opts.map(l => `<option value="${l.id}">${esc(l.code)}（${esc(l.name || '')}）</option>`).join('') : '';
       $('#ioLocHint').textContent = opts.length ? `分区：${zone} · 共 ${opts.length} 个可选库位` : `⚠ ${refs.storage[g.storage] || ''} 的「${zone}」分区暂无库位，请先在货位管理添加`;
     };
     let imgData = '';
-    $('#ioImg').onchange = e => { const f = e.target.files[0]; if (!f) { imgData = ''; $('#ioImgPrev').innerHTML = ''; return; } readImageScaled(f, url => { imgData = url; $('#ioImgPrev').innerHTML = `<img src="${url}" style="margin-top:8px;max-height:88px;border-radius:8px;border:1px solid var(--border)">`; }); };
+    if (isIn && $('#ioImg')) $('#ioImg').onchange = e => { const f = e.target.files[0]; if (!f) { imgData = ''; $('#ioImgPrev').innerHTML = ''; return; } readImageScaled(f, url => { imgData = url; $('#ioImgPrev').innerHTML = `<img src="${url}" style="margin-top:8px;max-height:88px;border-radius:8px;border:1px solid var(--border)">`; }); };
     const refreshStock = () => { $('#ioStock').innerHTML = refs.goodsList.map(g => `<tr><td>${esc(g.name)}</td><td>${zoneTag(g.zone)}</td><td class="muted">${esc(refs.storage[g.storage] || '-')}</td><td class="muted tnum">${g.shelfLifeDays ? g.shelfLifeDays + '天' : '—'}</td><td class="qty tnum">${g.count == null ? 0 : g.count}</td></tr>`).join(''); };
     const refreshRec = async () => { const rec = await get('/api/record'); const rows = (rec.data || []).sort((a, b) => b.id - a.id).slice(0, 10);
-      $('#ioRec').innerHTML = rows.map(r => { const g = refs.goodsList.find(x => x.id === r.goods) || {}; const inb = r.type === 0;
+      $('#ioRec').innerHTML = rows.map(r => { const g = goodsOf(r.goods); const inb = r.type === 0;
         return `<tr><td>${esc(g.name || '#' + r.goods)}</td><td><span class="pill ${inb ? 'in' : 'out'}"><span class="d"></span>${inb ? '入库' : '出库'}</span></td><td class="qty ${inb ? 'pos' : 'neg'} tnum">${inb ? '+' : '-'}${r.count}</td><td class="muted">${r.locationId ? esc(locName[r.locationId] || '') : '-'}</td><td class="muted">${r.orderId ? esc(ordNo[r.orderId] || '#' + r.orderId) : '-'}</td><td class="muted tnum">${r.createtime || ''}</td></tr>`; }).join(''); };
-    /* 关联订单 → 自动填写商品/数量/备注；多商品订单显示可点击明细 */
+    // 选订单 → 明细芯片 → 自动填写；点「查看详情」看商品信息
     const fillFromOrder = () => {
-      const box = $('#ioOrderItems');
-      const o = orders.find(x => x.id === +($('#ioOrder').value || 0));
-      if (!o || !(o.items || []).length) { box.innerHTML = ''; return; }
-      const dirHint = o.type === 1 ? '销售订单 · 建议出库' : '采购订单 · 建议入库';
-      box.innerHTML = `<div class="hint-sm" style="margin-top:6px">${dirHint} · 点击商品自动填写：</div>
-        <div class="oi-chips">${o.items.map((it, i) => { const g = refs.goodsList.find(x => x.id === it.goodsId) || {};
-          return `<button type="button" class="btn btn-sm oi-chip" data-i="${i}">${esc(g.name || ('#' + it.goodsId))} ×${it.count}</button>`; }).join('')}</div>`;
-      const apply = it => {
-        $('#ioGoods').value = String(it.goodsId); refreshLoc();
+      const box = $('#ioOrderItems'), o = orders.find(x => x.id === +($('#ioOrder').value || 0));
+      const gsel = $('#ioGoods');
+      if (!o || !(o.items || []).length) { box.innerHTML = ''; gsel.innerHTML = '<option value="">—</option>'; return; }
+      box.innerHTML = `<div class="hint-sm" style="margin-top:6px">点击商品自动填写数量：</div>
+        <div class="oi-chips">${o.items.map((it, i) => `<button type="button" class="btn btn-sm oi-chip" data-i="${i}">${esc((goodsOf(it.goodsId).name) || ('#' + it.goodsId))} ×${it.count}</button>`).join('')}</div>`;
+      gsel.innerHTML = o.items.map(it => `<option value="${it.goodsId}">${esc(goodsOf(it.goodsId).name || ('#' + it.goodsId))}</option>`).join('');
+      const apply = (it) => {
+        gsel.value = String(it.goodsId); refreshLoc();
         $('#ioCount').value = it.count;
-        $('#ioRemark').value = (o.type === 1 ? '销售出库' : '采购入库') + '（单号' + o.orderNo + '）';
+        $('#ioRemark').value = (isIn ? '采购入库' : '销售出库') + '（单号' + o.orderNo + '）';
         box.querySelectorAll('.oi-chip').forEach(b => b.classList.toggle('on', o.items[+b.dataset.i] === it));
       };
       box.querySelectorAll('.oi-chip').forEach(b => b.onclick = () => apply(o.items[+b.dataset.i]));
-      apply(o.items[0]);   // 默认填第一条明细
+      apply(o.items[0]);
     };
     $('#ioOrder').onchange = fillFromOrder;
-    $('#ioGoods').onchange = refreshLoc; refreshLoc(); refreshStock(); await refreshRec();
-    const move = async (dir) => {
-      const goodsId = +$('#ioGoods').value, count = +$('#ioCount').value, remark = $('#ioRemark').value;
+    $('#ioGoods').onchange = refreshLoc;
+    $('#ioGoodsView').onclick = () => { const id = +$('#ioGoods').value; if (id) location.hash = '#/goods/' + id; else showToast('请先选择订单与商品', true); };
+    refreshStock(); await refreshRec();
+    $('#btnGo').onclick = async () => {
       const orderId = $('#ioOrder').value ? +$('#ioOrder').value : null;
+      const goodsId = +$('#ioGoods').value, count = +$('#ioCount').value, remark = $('#ioRemark').value;
+      if (!orderId) return showToast(`请先选择${isIn ? '采购' : '销售'}订单`, true);
+      if (!goodsId) return showToast('请选择商品', true);
       if (!count || count <= 0) return showToast('请输入正数数量', true);
       const body = { goodsId, count, remark, orderId };
-      if (dir === 'in') { body.locationId = $('#ioLoc').value ? +$('#ioLoc').value : null; if (imgData) body.image = imgData; }
+      if (isIn) { body.locationId = $('#ioLoc') && $('#ioLoc').value ? +$('#ioLoc').value : null; if (imgData) body.image = imgData; }
       const res = await post('/api/inout/' + dir, body);
-      if (res.code === 200) { showToast((dir === 'in' ? '入库' : '出库') + '成功'); imgData = ''; $('#ioImg').value = ''; $('#ioImgPrev').innerHTML = ''; await loadRefs(); refreshLoc(); refreshStock(); await refreshRec(); refreshBell(); }
+      if (res.code === 200) { showToast((isIn ? '入库' : '出库') + '成功'); await loadRefs(); refreshBell(); renderInout(view, dir); }
       else showToast(res.msg || '操作失败', true);
     };
-    $('#btnIn').onclick = () => move('in'); $('#btnOut').onclick = () => move('out');
   }
 
   /* ================= 订单 ================= */
@@ -423,7 +466,7 @@
       const payload = { type, status: +$('#oStatus').value, remark: $('#oRemark').value, items: lineItems };
       if (isSale) { payload.buyer = $('#oBuyer').value.trim() || '散客'; } else { payload.supplierId = $('#oParty').value ? +$('#oParty').value : null; }
       const r = editing ? await put('/api/orders/' + full.id, payload) : await post('/api/orders', payload);
-      if (r.code === 200) { showToast('保存成功'); location.hash = '#/' + backHash; } else showToast(r.msg || '保存失败', true);
+      if (r.code === 200) { showToast('保存成功'); goTo(backHash); } else showToast(r.msg || '保存失败', true);
     };
   }
 
@@ -435,6 +478,7 @@
     { k: 'zone', label: '存储分区', type: 'select', options: ZONES },
     { k: 'shelfLifeDays', label: '保质期(天，留空=不易过期)', type: 'number' },
     { k: 'cleanupWarnDays', label: '到期前预警清理(天)', type: 'number' },
+    { k: 'piecesPerCap', label: '多少件占1个库位容量', type: 'number' },
     { k: 'image', label: '商品图片', type: 'image', full: true },
     { k: 'remark', label: '备注', type: 'textarea', full: true }
   ];
@@ -491,7 +535,7 @@
             <div class="pd-row"><span>供应商</span><b>${(g.suppliers && g.suppliers.length) ? g.suppliers.map(esc).join('、') : '—'}</b></div>
           </div>
         </div>
-        <div class="card-h" style="margin-top:18px"><div><h3 style="font-size:14px">出入库 / 库存历史</h3></div><div class="right"><div class="seg" id="pSeg">${PERIODS.map(([k, l], i) => `<button data-p="${k}" class="${i === 1 ? 'on' : ''}">${l}</button>`).join('')}</div></div></div>
+        <div class="card-h" style="margin-top:18px"><div><h3 style="font-size:14px">出入库 / 库存历史</h3></div><div class="right"><div class="seg" id="pSeg">${PERIODS.map(([k, l]) => `<button data-p="${k}" class="${k === 'month' ? 'on' : ''}">${l}</button>`).join('')}</div></div></div>
         <div class="legend" style="margin:6px 0 2px"><div class="it"><span class="sw" style="background:#2a78d6"></span>入库</div><div class="it"><span class="sw" style="background:#e0603a"></span>出库</div><div class="it"><span class="sw" style="background:#1f8043"></span>库存</div></div>
         <div id="pChart"></div>
         <div class="card-h" style="margin-top:12px"><h3 style="font-size:14px">近期出入库记录</h3></div>
@@ -654,7 +698,7 @@
   /* ================= 通用表格（记录/分类/预警阈值/日志） ================= */
   const TABLES = {
     record: { label: '出入库记录', cols: ['id', 'goods', 'userId', 'count', 'type', 'createtime', 'remark'], readonly: true },
-    goodstype: { label: '商品分类', cols: ['id', 'name', 'remark'], fields: [{ k: 'name', label: '分类名', type: 'text' }, { k: 'remark', label: '备注', type: 'textarea', full: true }] },
+    goodstype: { label: '商品分类', cols: ['id', 'name', 'storageId', 'remark'], fields: [{ k: 'name', label: '分类名', type: 'text' }, { k: 'storageId', label: '所属仓库', type: 'ref', list: () => refs.storageList }, { k: 'remark', label: '备注', type: 'textarea', full: true }] },
     stock_alert: { label: '预警阈值', cols: ['id', 'goodsId', 'minCount', 'maxCount', 'enabled', 'remark'],
       fields: [{ k: 'goodsId', label: '商品', type: 'ref', list: () => refs.goodsList }, { k: 'minCount', label: '安全下限', type: 'number' }, { k: 'maxCount', label: '库存上限', type: 'number' }, { k: 'enabled', label: '状态', type: 'select', options: [['1', '启用'], ['0', '停用']] }, { k: 'remark', label: '备注', type: 'textarea', full: true }] },
     sys_log: { label: '操作日志', cols: ['id', 'content', 'userId', 'ipAddr', 'methods', 'result', 'duration', 'createTime'], readonly: true }
@@ -684,6 +728,7 @@
     if (t === 'sys_log' && c === 'userId') return v;            // 日志里存的是登录账号
     if (c === 'userId') return refs.userName(v);
     if (c === 'goodsId') return refs.goods[v] || v;
+    if (c === 'storageId') return refs.storage[v] || v;
     if (c === 'type' && t === 'record') return v === 0 ? '入库' : '出库';
     if (c === 'enabled') return v ? '启用' : '停用';
     return v;
@@ -719,7 +764,7 @@
       const obj = {};
       view.querySelectorAll('[data-f]').forEach(el => { let v = el.value; if (el.type === 'number') v = v === '' ? null : Number(v); obj[el.dataset.f] = v; });
       const r = await opts.onSubmit(obj);
-      if (r && r.code === 200) { showToast('保存成功'); await loadRefs(); location.hash = '#/' + opts.backHash; }
+      if (r && r.code === 200) { showToast('保存成功'); await loadRefs(); goTo(opts.backHash); }
       else showToast((r && r.msg) || '保存失败', true);
     };
   }

@@ -31,6 +31,9 @@ public class Goods {
     /** 到期前多少天预警清理 */
     @Column(name = "cleanup_warn_days")
     private Integer cleanupWarnDays;
+    /** 多少件该商品占 1 个库位容量（默认 1） */
+    @Column(name = "pieces_per_cap")
+    private Integer piecesPerCap;
     @Column(name = "remark")
     private String remark;
 }
