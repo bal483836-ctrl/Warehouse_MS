@@ -189,6 +189,8 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .io-tabs{display:inline-flex;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px;margin-bottom:4px}
 .io-tabs button{border:none;background:none;padding:7px 20px;border-radius:8px;font-size:14px;font-weight:600;color:var(--ink-2)}
 .io-tabs button.on{background:var(--surface);color:var(--accent);box-shadow:var(--shadow)}
+.io-subtabs{margin:2px 0 6px}
+.io-subtabs button{padding:5px 14px;font-size:13px}
 .io-goods-row{display:flex;gap:8px;align-items:center}
 .io-goods-row select{flex:1}
 .io-goods-row .btn{flex:0 0 auto;white-space:nowrap}

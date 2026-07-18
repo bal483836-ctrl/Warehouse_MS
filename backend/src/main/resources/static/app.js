@@ -256,11 +256,17 @@
     view.querySelectorAll('[data-g]').forEach(el => el.onclick = () => location.hash = '#/goods/' + el.dataset.g);
   }
 
-  /* ================= 出入库操作（入库/出库分开，必须关联订单） ================= */
-  async function renderInout(view, dir) {
+  /* ================= 出入库操作（入库/出库分开；出库可关联订单或清理过保） ================= */
+  const expiryLabel = days => days == null ? '' : (days < 0 ? `已过期${-days}天` : (days === 0 ? '今日到期' : `${days}天后到期`));
+  async function renderInout(view, dir, outMode) {
     dir = dir || 'in';
+    outMode = outMode || 'order';           // 出库子模式：order=关联订单，cleanup=清理过保
+    const isIn = dir === 'in';
+    const isCleanup = !isIn && outMode === 'cleanup';
     $('#pageTitle').textContent = '出入库操作';
-    $('#pageSub').textContent = '入库关联采购订单、出库关联销售订单；选择订单后自动带出商品与数量；已完成订单不再显示';
+    $('#pageSub').textContent = isCleanup
+      ? '清理过保产品：直接选择临期/过期批次出库，无需关联订单'
+      : '入库关联采购订单、出库关联销售订单；选择订单后自动带出商品与数量；订单所有商品出完才算完成';
     const [ordRes, locRes] = await Promise.all([get('/api/orders'), get('/api/location')]);
     const locations = locRes.data || [];
     const allOrders = ordRes.data || [];
@@ -268,32 +274,51 @@
     const orders = allOrders.filter(o => (dir === 'in' ? o.type === 0 : o.type === 1) && o.status !== 1 && o.status !== 2);
     const locName = {}; locations.forEach(l => locName[l.id] = l.code);
     const ordNo = {}; allOrders.forEach(o => ordNo[o.id] = o.orderNo);
-    const isIn = dir === 'in';
+    const gname = id => (refs.goodsList.find(x => x.id === id) || {}).name || ('#' + id);
+    // 清理过保批次
+    let cleanupRows = [];
+    if (isCleanup) { const c = await get('/api/inout/cleanup-list'); cleanupRows = c.data || []; }
     const orderOpt = orders.map(o => `<option value="${o.id}">${esc(o.orderNo)}（${esc(isIn ? (refs.supplier[o.supplierId] || '供应商') : (o.buyer || '买家'))}）</option>`).join('');
-    view.innerHTML = `
-      <div class="io-tabs"><button data-d="in" class="${isIn ? 'on' : ''}">入库（采购）</button><button data-d="out" class="${isIn ? '' : 'on'}">出库（销售）</button></div>
-      <section class="grid-2">
-        <div class="card"><div class="card-h"><h3>${isIn ? '采购入库登记' : '销售出库登记'}</h3></div>
-          <div style="display:flex;flex-direction:column;gap:13px;margin-top:12px">
+    // 出库子模式切换条（仅出库显示）
+    const subTabs = isIn ? '' : `<div class="io-tabs io-subtabs">
+        <button data-m="order" class="${outMode === 'order' ? 'on' : ''}">关联销售订单</button>
+        <button data-m="cleanup" class="${outMode === 'cleanup' ? 'on' : ''}">清理过保产品</button></div>`;
+    // 左侧登记表单
+    const orderForm = `
             <div class="field"><label>关联${isIn ? '采购' : '销售'}订单（必选）</label>
               <select id="ioOrder"><option value="">${orders.length ? '— 请选择订单 —' : '（暂无待' + (isIn ? '入库' : '出库') + '订单）'}</option>${orderOpt}</select>
               <div id="ioOrderItems"></div></div>
-            <div class="field"><label>商品</label><div class="io-goods-row"><select id="ioGoods" disabled></select><a class="btn btn-sm" id="ioGoodsView">查看详情</a></div></div>
+            <div class="field"><label>商品（选择ID）</label><div class="io-goods-row"><select id="ioGoods"></select><a class="btn btn-sm" id="ioGoodsView">查看详情</a></div></div>
             <div class="field"><label>数量</label><input id="ioCount" type="number" min="1" value="1"></div>
             ${isIn ? `<div class="field"><label>落位库位（分区须匹配）</label><select id="ioLoc"></select><div class="hint-sm" id="ioLocHint"></div></div>
             <div class="field"><label>收货凭证图片（可选）</label><input id="ioImg" type="file" accept="image/*"><div id="ioImgPrev"></div></div>` : ''}
             <div class="field"><label>备注</label><input id="ioRemark" placeholder="选填"></div>
-            <button class="btn btn-primary" id="btnGo">${isIn ? '确认入库' : '确认出库'}</button>
+            <button class="btn btn-primary" id="btnGo">${isIn ? '确认入库' : '确认出库'}</button>`;
+    const cleanupForm = `
+            <div class="field"><label>选择需清理的批次（临期/过期）</label>
+              <select id="ioCleanup"><option value="">${cleanupRows.length ? '— 请选择批次 —' : '（暂无临期/过期批次）'}</option>${cleanupRows.map((r, i) => `<option value="${i}">#${r.goodsId} ${esc(r.gname)} · 货位${esc(r.code)} · ×${r.qty} · ${expiryLabel(r.days)}</option>`).join('')}</select></div>
+            <div class="field"><label>商品（含ID）</label><input id="ioGoodsLabel" disabled placeholder="选择批次后自动带出"></div>
+            <div class="field"><label>清理数量</label><input id="ioCount" type="number" min="1" value="1"><div class="hint-sm" id="ioCleanupHint"></div></div>
+            <div class="field"><label>备注</label><input id="ioRemark" placeholder="选填，默认「清理过保出库」"></div>
+            <button class="btn btn-primary" id="btnGo">确认清理出库</button>`;
+    view.innerHTML = `
+      <div class="io-tabs"><button data-d="in" class="${isIn ? 'on' : ''}">入库（采购）</button><button data-d="out" class="${isIn ? '' : 'on'}">出库</button></div>
+      ${subTabs}
+      <section class="grid-2">
+        <div class="card"><div class="card-h"><h3>${isIn ? '采购入库登记' : (isCleanup ? '清理过保出库' : '销售出库登记')}</h3></div>
+          <div style="display:flex;flex-direction:column;gap:13px;margin-top:12px">
+            ${isCleanup ? cleanupForm : orderForm}
           </div>
         </div>
         <div class="card"><div class="card-h"><h3>当前库存</h3></div>
-          <div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>货物</th><th>分区</th><th>仓库</th><th>保质期</th><th>库存</th></tr></thead><tbody id="ioStock"></tbody></table></div>
+          <div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>ID</th><th>货物</th><th>分区</th><th>仓库</th><th>保质期</th><th>库存</th></tr></thead><tbody id="ioStock"></tbody></table></div>
         </div>
       </section>
       <section class="card"><div class="card-h"><h3>最新流水</h3></div>
         <div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>货物</th><th>类型</th><th>数量</th><th>落位</th><th>关联订单</th><th>时间</th></tr></thead><tbody id="ioRec"></tbody></table></div>
       </section>`;
-    view.querySelectorAll('.io-tabs button').forEach(b => b.onclick = () => renderInout(view, b.dataset.d));
+    view.querySelectorAll('.io-tabs:not(.io-subtabs) button').forEach(b => b.onclick = () => renderInout(view, b.dataset.d));
+    view.querySelectorAll('.io-subtabs button').forEach(b => b.onclick = () => renderInout(view, 'out', b.dataset.m));
     const goodsOf = id => refs.goodsList.find(x => x.id === id) || {};
     const refreshLoc = () => {
       if (!isIn) return;
@@ -304,18 +329,45 @@
     };
     let imgData = '';
     if (isIn && $('#ioImg')) $('#ioImg').onchange = e => { const f = e.target.files[0]; if (!f) { imgData = ''; $('#ioImgPrev').innerHTML = ''; return; } readImageScaled(f, url => { imgData = url; $('#ioImgPrev').innerHTML = `<img src="${url}" style="margin-top:8px;max-height:88px;border-radius:8px;border:1px solid var(--border)">`; }); };
-    const refreshStock = () => { $('#ioStock').innerHTML = refs.goodsList.map(g => `<tr><td>${esc(g.name)}</td><td>${zoneTag(g.zone)}</td><td class="muted">${esc(refs.storage[g.storage] || '-')}</td><td class="muted tnum">${g.shelfLifeDays ? g.shelfLifeDays + '天' : '—'}</td><td class="qty tnum">${g.count == null ? 0 : g.count}</td></tr>`).join(''); };
+    const refreshStock = () => { $('#ioStock').innerHTML = refs.goodsList.map(g => `<tr><td class="muted tnum">#${g.id}</td><td>${esc(g.name)}</td><td>${zoneTag(g.zone)}</td><td class="muted">${esc(refs.storage[g.storage] || '-')}</td><td class="muted tnum">${g.shelfLifeDays ? g.shelfLifeDays + '天' : '—'}</td><td class="qty tnum">${g.count == null ? 0 : g.count}</td></tr>`).join(''); };
     const refreshRec = async () => { const rec = await get('/api/record'); const rows = (rec.data || []).sort((a, b) => b.id - a.id).slice(0, 10);
       $('#ioRec').innerHTML = rows.map(r => { const g = goodsOf(r.goods); const inb = r.type === 0;
-        return `<tr><td>${esc(g.name || '#' + r.goods)}</td><td><span class="pill ${inb ? 'in' : 'out'}"><span class="d"></span>${inb ? '入库' : '出库'}</span></td><td class="qty ${inb ? 'pos' : 'neg'} tnum">${inb ? '+' : '-'}${r.count}</td><td class="muted">${r.locationId ? esc(locName[r.locationId] || '') : '-'}</td><td class="muted">${r.orderId ? esc(ordNo[r.orderId] || '#' + r.orderId) : '-'}</td><td class="muted tnum">${r.createtime || ''}</td></tr>`; }).join(''); };
+        return `<tr><td>#${r.goods} ${esc(g.name || '')}</td><td><span class="pill ${inb ? 'in' : 'out'}"><span class="d"></span>${inb ? '入库' : '出库'}</span></td><td class="qty ${inb ? 'pos' : 'neg'} tnum">${inb ? '+' : '-'}${r.count}</td><td class="muted">${r.locationId ? esc(locName[r.locationId] || '') : '-'}</td><td class="muted">${r.orderId ? esc(ordNo[r.orderId] || '#' + r.orderId) : '清理过保'}</td><td class="muted tnum">${r.createtime || ''}</td></tr>`; }).join(''); };
+    refreshStock(); await refreshRec();
+
+    if (isCleanup) {
+      // ——— 清理过保出库 ———
+      const sel = $('#ioCleanup');
+      const applyBatch = () => {
+        const r = cleanupRows[+(sel.value || -1)];
+        if (!r) { $('#ioGoodsLabel').value = ''; $('#ioCleanupHint').textContent = ''; $('#ioCount').value = 1; return; }
+        $('#ioGoodsLabel').value = `#${r.goodsId} ${gname(r.goodsId)}`;
+        $('#ioCount').value = r.qty; $('#ioCount').max = r.qty;
+        $('#ioCleanupHint').textContent = `货位 ${r.code} · 该批次 ${r.qty} 件 · ${expiryLabel(r.days)}`;
+        $('#ioRemark').value = '清理过保出库（货位' + r.code + '）';
+      };
+      sel.onchange = applyBatch;
+      $('#btnGo').onclick = async () => {
+        const r = cleanupRows[+(sel.value || -1)];
+        if (!r) return showToast('请先选择要清理的批次', true);
+        const count = +$('#ioCount').value;
+        if (!count || count <= 0) return showToast('请输入正数数量', true);
+        const res = await post('/api/inout/out', { goodsId: r.goodsId, count, remark: $('#ioRemark').value, cleanup: true, locationStockId: r.lsId });
+        if (res.code === 200) { showToast('清理出库成功'); await loadRefs(); refreshBell(); renderInout(view, 'out', 'cleanup'); }
+        else showToast(res.msg || '操作失败', true);
+      };
+      return;
+    }
+
+    // ——— 入库 / 销售订单出库 ———
     // 选订单 → 明细芯片 → 自动填写；点「查看详情」看商品信息
     const fillFromOrder = () => {
       const box = $('#ioOrderItems'), o = orders.find(x => x.id === +($('#ioOrder').value || 0));
       const gsel = $('#ioGoods');
       if (!o || !(o.items || []).length) { box.innerHTML = ''; gsel.innerHTML = '<option value="">—</option>'; return; }
       box.innerHTML = `<div class="hint-sm" style="margin-top:6px">点击商品自动填写数量：</div>
-        <div class="oi-chips">${o.items.map((it, i) => `<button type="button" class="btn btn-sm oi-chip" data-i="${i}">${esc((goodsOf(it.goodsId).name) || ('#' + it.goodsId))} ×${it.count}</button>`).join('')}</div>`;
-      gsel.innerHTML = o.items.map(it => `<option value="${it.goodsId}">${esc(goodsOf(it.goodsId).name || ('#' + it.goodsId))}</option>`).join('');
+        <div class="oi-chips">${o.items.map((it, i) => `<button type="button" class="btn btn-sm oi-chip" data-i="${i}">#${it.goodsId} ${esc(goodsOf(it.goodsId).name || '')} ×${it.count}</button>`).join('')}</div>`;
+      gsel.innerHTML = o.items.map(it => `<option value="${it.goodsId}">#${it.goodsId} ${esc(goodsOf(it.goodsId).name || '')}</option>`).join('');
       const apply = (it) => {
         gsel.value = String(it.goodsId); refreshLoc();
         $('#ioCount').value = it.count;
@@ -326,9 +378,14 @@
       apply(o.items[0]);
     };
     $('#ioOrder').onchange = fillFromOrder;
-    $('#ioGoods').onchange = refreshLoc;
+    // 直接从下拉切换商品：入库刷新库位；出库把数量带成该商品的下单量
+    $('#ioGoods').onchange = () => {
+      refreshLoc();
+      const o = orders.find(x => x.id === +($('#ioOrder').value || 0));
+      const it = o && (o.items || []).find(x => x.goodsId === +$('#ioGoods').value);
+      if (it) $('#ioCount').value = it.count;
+    };
     $('#ioGoodsView').onclick = () => { const id = +$('#ioGoods').value; if (id) location.hash = '#/goods/' + id; else showToast('请先选择订单与商品', true); };
-    refreshStock(); await refreshRec();
     $('#btnGo').onclick = async () => {
       const orderId = $('#ioOrder').value ? +$('#ioOrder').value : null;
       const goodsId = +$('#ioGoods').value, count = +$('#ioCount').value, remark = $('#ioRemark').value;
@@ -646,16 +703,41 @@
     $('#add').onclick = () => renderLocationForm(view, null);
   }
   const LOCATION_FIELDS = [
-    { k: 'code', label: '库位编码', type: 'text' }, { k: 'name', label: '库位名称', type: 'text' },
     { k: 'storageId', label: '所属仓库', type: 'ref', list: () => refs.storageList },
     { k: 'zone', label: '分区', type: 'select', options: ZONES },
+    { k: 'code', label: '库位编码', type: 'text' }, { k: 'name', label: '库位名称', type: 'text' },
     { k: 'rowNo', label: '排', type: 'number' }, { k: 'colNo', label: '列', type: 'number' },
     { k: 'capacity', label: '容量', type: 'number' }
   ];
   function renderLocationForm(view, row) {
     const editing = !!row;
     renderForm(view, { title: (editing ? '编辑' : '新增') + '库位', backHash: 't/location', crumbs: [['货位管理', 't/location'], [editing ? '编辑' : '新增', null]], fields: LOCATION_FIELDS, model: row || { zone: '普通', capacity: 500 },
+      note: editing ? undefined : '选择「所属仓库」与「分区」后，库位编码 / 名称 / 排列会自动生成（可手动修改）',
       onSubmit: async obj => editing ? put('/api/location/' + row.id, { ...row, ...obj }) : post('/api/location', obj) });
+    if (editing) return;
+    // 新增：按仓库+分区自动生成编码（用户手动改过编码后不再覆盖）
+    const storageSel = view.querySelector('[data-f="storageId"]');
+    const zoneSel = view.querySelector('[data-f="zone"]');
+    const codeInput = view.querySelector('[data-f="code"]');
+    const nameInput = view.querySelector('[data-f="name"]');
+    const rowInput = view.querySelector('[data-f="rowNo"]');
+    const colInput = view.querySelector('[data-f="colNo"]');
+    let codeTouched = false, nameTouched = false;
+    codeInput.addEventListener('input', () => codeTouched = true);
+    nameInput.addEventListener('input', () => nameTouched = true);
+    const gen = async () => {
+      const sid = +storageSel.value, zone = zoneSel.value;
+      if (!sid) return;
+      const r = await get(`/api/location/next-code?storageId=${sid}&zone=${encodeURIComponent(zone)}`);
+      if (r.code !== 200 || !r.data) return;
+      if (!codeTouched) codeInput.value = r.data.code;
+      if (!nameTouched) nameInput.value = zone + '区-' + r.data.code;
+      if (!rowInput.value) rowInput.value = r.data.rowNo;
+      if (!colInput.value) colInput.value = r.data.colNo;
+    };
+    storageSel.addEventListener('change', gen);
+    zoneSel.addEventListener('change', gen);
+    gen();
   }
 
   /* ================= 个人资料 ================= */
